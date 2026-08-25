@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de JSON - Aeroponía</title>
+    <style>
+        :root {
+            --bg: #e0e5ec;
+            --shadow-dark: #a3b1c6;
+            --shadow-light: #ffffff;
+            --text: #2d3a4a;
+            --text-muted: #6c7a8a;
+            --accent: #4f8df9;
+            --success: #4caf7d;
+            --warning: #f5b042;
+            --danger: #e85d5d;
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: var(--bg);
+            border-radius: var(--radius);
+            box-shadow: 8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
+            padding: 2rem;
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+        }
+        .btn {
+            background: var(--bg);
+            border: none;
+            padding: 0.8rem 1.5rem;
+            margin: 0.5rem;
+            border-radius: 50px;
+            box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text);
+            transition: all 0.2s;
+            display: inline-block;
+            width: calc(100% - 1rem);
+            max-width: 300px;
+        }
+        .btn:hover {
+            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+            color: var(--accent);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .note {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 Generador de JSON</h1>
+        <p>Datos simulados de aeroponía · 30 días · muestra cada 1 hora</p>
+        <div class="btn-group">
+            <button class="btn" onclick="descargarJSON('temperatura.json', generarTemperatura())">🌡️ Temperatura (int/ext)</button>
+            <button class="btn" onclick="descargarJSON('humedad.json', generarHumedad())">💧 Humedad (int/ext)</button>
+            <button class="btn" onclick="descargarJSON('presion.json', generarPresion())">🌀 Presión (int/ext)</button>
+            <button class="btn" onclick="descargarJSON('iluminacion_conductividad.json', generarIluminacionCE())">💡 Luz y CE</button>
+            <button class="btn" onclick="descargarTodos()">⬇️ Descargar los 4 JSON</button>
+        </div>
+        <p class="note">Los archivos se descargan automáticamente. Puedes abrirlos o guardarlos para usarlos con el dashboard.</p>
+    </div>
+
+    <script>
+        // ==================== CONFIGURACIÓN ====================
+        const DIAS = 30;
+        const MUESTRAS_POR_DIA = 24; // cada hora
+        const TOTAL_MUESTRAS = DIAS * MUESTRAS_POR_DIA;
+
+        const OBJETIVOS = {
+            temp_int: 20,       // °C
+            temp_ext_min: 5,    // °C (invierno Asturias)
+            temp_ext_max: 14,   // °C
+            hum_int_hojas: 62,  // %
+            hum_int_raiz: 95,   // %
+            hum_ext_min: 50,
+            hum_ext_max: 90,
+            pres_base: 1010,    // hPa
+            luz_roja_inicial: 150,
+            luz_roja_final: 120,
+            luz_azul_inicial: 80,
+            luz_azul_final: 110,
+            ce: 1.8             // mS/cm
+        };
+
+        // Fecha de inicio
+        const inicio = new Date('2025-01-01T00:00:00');
+
+        // ==================== FUNCIONES DE GENERACIÓN ====================
+        function generarFechas() {
+            const fechas = [];
+            for (let i = 0; i < TOTAL_MUESTRAS; i++) {
+                const fecha = new Date(inicio);
+                fecha.setHours(inicio.getHours() + i);
+                fechas.push(fecha);
+            }
+            return fechas;
+        }
+
+        // Rango aleatorio con min y max
+        function rand(min, max) {
+            return min + Math.random() * (max - min);
+        }
+
+        // Ciclo diurno simplificado: 0 a 24 horas, devuelve factor 0..1
+        function cicloDiurno(hora) {
+            // Pico al mediodía (12:00), mínimo a las 6:00
+            const rad = (hora - 6) / 12 * Math.PI;
+            if (hora < 6 || hora > 18) return 0.15; // noche
+            return Math.max(0.15, Math.sin(rad));
+        }
+
+        // ==================== 1. TEMPERATURA ====================
+        function generarTemperatura() {
+            const fechas = generarFechas();
+            const datos = fechas.map((f, i) => {
+                const hora = f.getHours();
+                const dia = Math.floor(i / 24) + 1;
+                // Temperatura exterior: base según ciclo diurno + variación estacional ligera
+                const baseExt = OBJETIVOS.temp_ext_min + (OBJETIVOS.temp_ext_max - OBJETIVOS.temp_ext_min) * cicloDiurno(hora);
+                const temp_ext = +(baseExt + rand(-1.5, 1.5)).toFixed(1);
+                // Temperatura interior: controlada alrededor de 20°C
+                const temp_int = +(OBJETIVOS.temp_int + rand(-0.4, 0.4)).toFixed(1);
+                return {
+                    fecha: f.toISOString(),
+                    temp_int,
+                    temp_ext
+                };
+            });
+
+            return {
+                descripcion: "Temperatura interior (controlada) y exterior (ambiente) - 30 días, muestreo horario",
+                unidad: "°C",
+                datos
+            };
+        }
+
+        // ==================== 2. HUMEDAD ====================
+        function generarHumedad() {
+            const fechas = generarFechas();
+            const datos = fechas.map((f, i) => {
+                const hora = f.getHours();
+                // Humedad exterior: inversa a la temperatura (más humedad por la noche)
+                const baseExt = OBJETIVOS.hum_ext_min + (OBJETIVOS.hum_ext_max - OBJETIVOS.hum_ext_min) * (1 - cicloDiurno(hora));
+                const hum_ext = +(baseExt + rand(-5, 5)).toFixed(1);
+                // Humedad interior: asumimos zona de hojas (controlada a 62%)
+                const hum_int = +(OBJETIVOS.hum_int_hojas + rand(-3, 3)).toFixed(1);
+                return {
+                    fecha: f.toISOString(),
+                    hum_int,
+                    hum_ext
+                };
+            });
+
+            return {
+                descripcion: "Humedad interior (hojas, controlada) y exterior (ambiente) - 30 días, muestreo horario",
+                unidad: "%",
+                datos
+            };
+        }
+
+        // ==================== 3. PRESIÓN ====================
+        function generarPresion() {
+            const fechas = generarFechas();
+            const datos = fechas.map((f) => {
+                // Presión exterior varía lentamente con un ciclo + ruido
+                const pres_ext = +(OBJETIVOS.pres_base + rand(-8, 8)).toFixed(1);
+                // Presión interior prácticamente igual a la exterior (misma atmósfera)
+                const pres_int = +(pres_ext + rand(-0.2, 0.2)).toFixed(1);
+                return {
+                    fecha: f.toISOString(),
+                    pres_int,
+                    pres_ext
+                };
+            });
+
+            return {
+                descripcion: "Presión atmosférica interior y exterior - 30 días, muestreo horario",
+                unidad: "hPa",
+                datos
+            };
+        }
+
+        // ==================== 4. ILUMINACIÓN Y CONDUCTIVIDAD ====================
+        function generarIluminacionCE() {
+            const fechas = generarFechas();
+            const datos = fechas.map((f, i) => {
+                const hora = f.getHours();
+                const dia = Math.floor(i / 24) + 1; // 1..30
+                // Fotoperiodo: luces encendidas de 6:00 a 22:00
+                const encendido = (hora >= 6 && hora < 22);
+                // Tendencia de luz: cambio el día 10
+                const factorRojo = dia <= 10 ? 1 : Math.max(0.7, 1 - (dia - 10) * 0.03);
+                const factorAzul = dia <= 10 ? 1 : Math.min(1.3, 1 + (dia - 10) * 0.03);
+                const luz_roja = encendido ? +(OBJETIVOS.luz_roja_inicial * factorRojo + rand(-5, 5)).toFixed(0) : 0;
+                const luz_azul = encendido ? +(OBJETIVOS.luz_azul_inicial * factorAzul + rand(-5, 5)).toFixed(0) : 0;
+                // CE controlada alrededor de 1.8 mS/cm
+                const ce = +(OBJETIVOS.ce + rand(-0.1, 0.1)).toFixed(2);
+                return {
+                    fecha: f.toISOString(),
+                    luz_roja,
+                    luz_azul,
+                    ce
+                };
+            });
+
+            return {
+                descripcion: "Iluminación LED (roja y azul) y conductividad eléctrica - 30 días, muestreo horario",
+                unidades: {
+                    luz_roja: "µmol/m²/s",
+                    luz_azul: "µmol/m²/s",
+                    ce: "mS/cm"
+                },
+                datos
+            };
+        }
+
+        // ==================== DESCARGA ====================
+        function descargarJSON(nombreArchivo, objeto) {
+            const jsonStr = JSON.stringify(objeto, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nombreArchivo;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function descargarTodos() {
+            descargarJSON('temperatura.json', generarTemperatura());
+            descargarJSON('humedad.json', generarHumedad());
+            descargarJSON('presion.json', generarPresion());
+            descargarJSON('iluminacion_conductividad.json', generarIluminacionCE());
+        }
+    </script>
+</body>
+</html>
