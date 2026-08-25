@@ -195,12 +195,13 @@
         let charts = {};
 
         // Ventana visible
-        let windowPoints = 24; // 1 día por defecto
-        let margenDerecho = Math.round(windowPoints * 0.3); // 30% de la ventana
+        let windowPoints = 24; // puntos visibles (1 día por defecto)
+        let margenDerecho = Math.round(windowPoints * 0.3); // 30% del ancho
+        let totalWidth = windowPoints + margenDerecho; // Ancho total fijo
         let currentMin = 0;
         let currentMax = windowPoints - 1;
         let isAutoScroll = true;
-        let puntosVisibles = Math.floor(windowPoints * 0.7);
+        let puntosVisibles = Math.floor(totalWidth * 0.7); // Fase inicial: 70% del ancho total
 
         // ================= FUNCIONES =================
         function rand(min, max) { return min + Math.random() * (max - min); }
@@ -289,22 +290,17 @@
                 agregarPunto(punto);
             }
             tiempoActual = new Date(HOY);
-            puntosVisibles = Math.floor(windowPoints * 0.7);
+            puntosVisibles = Math.floor(totalWidth * 0.7);
             isAutoScroll = true;
-            // Ajustar ventana inicial con margen
-            currentMax = datos.fechas.length - 1;
-            currentMin = Math.max(0, currentMax - windowPoints + 1);
+            currentMin = 0;
+            currentMax = windowPoints - 1;
         }
 
         function avanzarHora() {
             tiempoActual.setHours(tiempoActual.getHours() + 1);
             const punto = generarPunto(tiempoActual);
             agregarPunto(punto);
-            if (isAutoScroll) {
-                currentMax = datos.fechas.length - 1;
-                currentMin = Math.max(0, currentMax - windowPoints + 1);
-            }
-            if (puntosVisibles < windowPoints) {
+            if (puntosVisibles < totalWidth) {
                 puntosVisibles++;
             }
             actualizarGraficos();
@@ -363,7 +359,7 @@
                                 enabled: true,
                                 mode: 'x',
                                 onPan: function({chart}) {
-                                    isAutoScroll = false; // desactivar auto-scroll al mover manualmente
+                                    isAutoScroll = false;
                                     currentMin = chart.scales.x.min;
                                     currentMax = chart.scales.x.max;
                                 }
@@ -447,14 +443,24 @@
             if (total === 0) return;
 
             let inicio, fin, maxEscala;
+            const totalWidthActual = windowPoints + margenDerecho; // Asegura usar el ancho total actual
+
             if (isAutoScroll) {
-                fin = total - 1;
-                inicio = Math.max(0, fin - windowPoints + 1);
+                if (puntosVisibles < totalWidthActual) {
+                    // Fase inicial: vista fija desde 0
+                    inicio = 0;
+                    fin = puntosVisibles - 1;
+                    maxEscala = totalWidthActual - 1; // Fijo para que no se mueva
+                } else {
+                    // Desplazamiento normal
+                    fin = total - 1;
+                    inicio = Math.max(0, fin - windowPoints + 1);
+                    maxEscala = fin + margenDerecho;
+                }
                 currentMin = inicio;
                 currentMax = fin;
-                maxEscala = fin + margenDerecho; // margen derecho en auto-scroll
             } else {
-                // Pan manual: usar currentMin y currentMax sin forzar margen
+                // Pan manual
                 inicio = Math.max(0, Math.floor(currentMin));
                 fin = Math.min(total - 1, Math.ceil(currentMax));
                 maxEscala = fin;
@@ -462,7 +468,6 @@
                 currentMax = fin;
             }
 
-            // Preparar datos visibles
             const indices = Array.from({length: fin - inicio + 1}, (_, i) => inicio + i);
             const prepararDatos = (arr) => arr.slice(inicio, fin + 1).map((y, i) => ({ x: indices[i], y }));
 
@@ -557,6 +562,7 @@
             isAutoScroll = true;
             currentMax = datos.fechas.length - 1;
             currentMin = Math.max(0, currentMax - windowPoints + 1);
+            puntosVisibles = totalWidth; // Fase completada
             actualizarGraficos();
         }
 
@@ -566,17 +572,17 @@
             crearControles();
             actualizarKPIs();
 
-            // Selector de rango
             document.querySelectorAll('.range-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     windowPoints = parseInt(btn.dataset.range);
-                    margenDerecho = Math.round(windowPoints * 0.3); // recalcular margen
-                    puntosVisibles = Math.min(windowPoints, datos.fechas.length);
+                    margenDerecho = Math.round(windowPoints * 0.3);
+                    totalWidth = windowPoints + margenDerecho;
+                    puntosVisibles = Math.min(totalWidth, datos.fechas.length);
                     isAutoScroll = true;
-                    currentMax = datos.fechas.length - 1;
-                    currentMin = Math.max(0, currentMax - windowPoints + 1);
+                    currentMin = 0;
+                    currentMax = windowPoints - 1;
                     actualizarGraficos();
                 });
             });
@@ -602,7 +608,6 @@
             document.getElementById('btn-acelerar').addEventListener('click', iniciarAceleracion);
             document.getElementById('btn-pausa').addEventListener('click', pausar);
 
-            // Inicializar auto-scroll con margen
             actualizarGraficos();
         }
 
