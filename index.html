@@ -6,6 +6,7 @@
     <title>Dashboard Aeroponía - Simulación en Vivo</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
+        /* Estilos neumórficos iguales a los anteriores */
         :root {
             --bg: #e0e5ec; --shadow-dark: #a3b1c6; --shadow-light: #ffffff;
             --text: #2d3a4a; --text-muted: #6c7a8a; --accent: #4f8df9;
@@ -36,9 +37,7 @@
         .tab-content.active { display:block; }
 
         .grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
-        @media (max-width:1024px) {
-            .grid { grid-template-columns:1fr; }
-        }
+        @media (max-width:1024px) { .grid { grid-template-columns:1fr; } }
         .card {
             background: var(--bg); border-radius: var(--radius);
             box-shadow:8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
@@ -64,9 +63,7 @@
             display:grid; grid-template-columns:1fr 1fr; gap:1rem;
             margin:1rem 0;
         }
-        @media (max-width:1024px) {
-            .control-group { grid-template-columns:1fr; }
-        }
+        @media (max-width:1024px) { .control-group { grid-template-columns:1fr; } }
         .control-item {
             background: var(--bg); border-radius: var(--radius-sm);
             box-shadow:inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
@@ -111,22 +108,18 @@
         <button class="btn" id="btn-pausa">⏸ Pausa</button>
     </div>
 
-    <!-- Pestaña Resumen -->
+    <!-- Pestañas como antes -->
     <div id="tab-resumen" class="tab-content active">
         <div class="kpi-grid" id="kpi-grid"></div>
         <h2 style="text-align:center; margin:1rem 0;">Controles de setpoint</h2>
         <div class="control-group" id="control-group"></div>
     </div>
-
-    <!-- Pestaña Agua -->
     <div id="tab-agua" class="tab-content">
         <div class="grid">
             <div class="card"><h2>⚗️ pH del agua</h2><div class="chart-container"><canvas id="chart-ph"></canvas></div></div>
             <div class="card"><h2>🧪 Conductividad Eléctrica</h2><div class="chart-container"><canvas id="chart-ce"></canvas></div></div>
         </div>
     </div>
-
-    <!-- Pestaña Raíces -->
     <div id="tab-raices" class="tab-content">
         <div class="grid">
             <div class="card"><h2>🌡️ Temperatura de raíz</h2><div class="chart-container"><canvas id="chart-temp-raiz"></canvas></div></div>
@@ -134,8 +127,6 @@
             <div class="card"><h2>🌀 Presión en raíz</h2><div class="chart-container"><canvas id="chart-pres-raiz"></canvas></div></div>
         </div>
     </div>
-
-    <!-- Pestaña Hojas -->
     <div id="tab-hojas" class="tab-content">
         <div class="grid">
             <div class="card"><h2>🌡️ Temperatura de hojas</h2><div class="chart-container"><canvas id="chart-temp-hojas"></canvas></div></div>
@@ -191,9 +182,14 @@
             luz_roja: [], luz_azul: [], ph: [], ce: [],
             fechas: []
         };
-        let fechasTooltip = []; // Para tooltips con fecha real
+        let fechasTooltip = [];
 
         let charts = {};
+
+        // Máximo de puntos visibles (72 horas = 3 días)
+        const MAX_POINTS = 72;
+        // Puntos iniciales para dejar 30% de espacio libre
+        let puntosVisibles = Math.floor(MAX_POINTS * 0.7); // 50
 
         // ================= FUNCIONES =================
         function rand(min, max) { return min + Math.random() * (max - min); }
@@ -212,19 +208,15 @@
             const hora = fecha.getHours();
             const diaCultivo = Math.floor((fecha - INICIO) / (24 * 3600 * 1000)) + 1;
 
-            // Temperatura exterior (con tendencia estacional)
             const tempBase = PARAMS.temp_ext_base + tendenciaSemanal(fecha);
             const tempExt = tempBase + PARAMS.temp_ext_amp_diurna * cicloDiurno(hora) + rand(-PARAMS.ruido_temp, PARAMS.ruido_temp);
 
-            // Humedad exterior (inversa a temperatura)
             const humBase = PARAMS.hum_ext_base - (tempExt - tempBase) * 2;
             const humExt = humBase + rand(-PARAMS.ruido_hum, PARAMS.ruido_hum);
 
-            // Presión exterior
             const horasDesdeInicio = (fecha - INICIO) / (3600 * 1000);
             const presExt = PARAMS.pres_base + PARAMS.pres_amp * Math.sin(horasDesdeInicio / PARAMS.pres_periodo_horas * Math.PI * 2) + rand(-PARAMS.ruido_pres, PARAMS.ruido_pres);
 
-            // Luz
             const encendido = hora >= PARAMS.fotoperiodo_inicio && hora < PARAMS.fotoperiodo_fin;
             let luzRoja = 0, luzAzul = 0;
             if (encendido) {
@@ -234,15 +226,12 @@
                 luzAzul = PARAMS.luz_azul_inicial * factorAzul + rand(-3, 3);
             }
 
-            // pH y CE (control muy ajustado)
             const ph = PARAMS.ph_setpoint + rand(-PARAMS.ruido_ph, PARAMS.ruido_ph);
             const ce = PARAMS.ce_setpoint + rand(-PARAMS.ruido_ce, PARAMS.ruido_ce);
 
-            // Temperaturas controladas (máx. ±0.25 °C para parecer muy estables)
             const tempRaiz = PARAMS.temp_setpoint + rand(-0.25, 0.25);
             const tempHojas = PARAMS.temp_setpoint + rand(-0.25, 0.25);
 
-            // Humedades controladas (también muy estables)
             const humRaiz = PARAMS.hum_raiz_setpoint + rand(-1.5, 1.5);
             const humHojas = PARAMS.hum_hojas_setpoint + rand(-1.5, 1.5);
 
@@ -289,12 +278,16 @@
                 agregarPunto(punto);
             }
             tiempoActual = new Date(HOY);
+            puntosVisibles = Math.floor(MAX_POINTS * 0.7);
         }
 
         function avanzarHora() {
             tiempoActual.setHours(tiempoActual.getHours() + 1);
             const punto = generarPunto(tiempoActual);
             agregarPunto(punto);
+            if (puntosVisibles < MAX_POINTS) {
+                puntosVisibles++;
+            }
             actualizarGraficos();
             actualizarKPIs();
         }
@@ -304,10 +297,11 @@
             const ctx = document.getElementById(id).getContext('2d');
             charts[id] = new Chart(ctx, {
                 type: 'line',
-                data: { labels: [], datasets },
+                data: { datasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         tooltip: {
@@ -320,8 +314,11 @@
                             displayColors: true,
                             callbacks: {
                                 title: function(items) {
-                                    if (items.length > 0 && fechasTooltip[items[0].dataIndex]) {
-                                        return fechasTooltip[items[0].dataIndex].toLocaleString();
+                                    if (items.length > 0) {
+                                        const idx = items[0].parsed.x;
+                                        if (fechasTooltip[idx]) {
+                                            return fechasTooltip[idx].toLocaleString();
+                                        }
                                     }
                                     return '';
                                 },
@@ -340,11 +337,29 @@
                         legend: { labels: { color: '#2d3a4a', boxWidth: 10, font: { size: 9 } } }
                     },
                     scales: {
-                        x: { ticks: { color: '#6c7a8a', maxTicksLimit: 10, font: { size: 9 } }, grid: { color: '#c9d1db' } },
-                        y: { 
+                        x: {
+                            type: 'linear',
+                            min: 0,
+                            max: MAX_POINTS - 1,
+                            ticks: {
+                                color: '#6c7a8a',
+                                maxTicksLimit: 10,
+                                font: { size: 9 },
+                                callback: function(value) {
+                                    const idx = Math.round(value);
+                                    if (idx >= 0 && idx < fechasTooltip.length) {
+                                        const f = fechasTooltip[idx];
+                                        return `${f.getDate()}/${f.getMonth()+1}`;
+                                    }
+                                    return '';
+                                }
+                            },
+                            grid: { color: '#c9d1db' }
+                        },
+                        y: {
                             ticks: { color: '#6c7a8a', font: { size: 9 } },
                             grid: { color: '#c9d1db' },
-                            grace: '20%'  // Añade 20% de margen vertical
+                            grace: '20%'
                         }
                     }
                 }
@@ -392,19 +407,28 @@
 
         function actualizarGraficos() {
             if (Object.keys(charts).length === 0) return;
-            const maxPoints = 72;
-            const labels = datos.fechas.slice(-maxPoints).map(d => {
-                const f = new Date(d);
-                return `${f.getDate()}/${f.getMonth()+1} ${f.getHours()}:00`;
-            });
-            fechasTooltip = datos.fechas.slice(-maxPoints); // Guardar fechas reales
+
+            const total = datos.fechas.length;
+            const puntosMostrar = Math.min(puntosVisibles, total);
+            const inicio = total - puntosMostrar;
+            const fin = total - 1;
+
+            // Actualizar fechasTooltip (solo el rango visible)
+            fechasTooltip = datos.fechas.slice(inicio);
+
+            // Preparar datos con índices x
+            const indices = Array.from({length: puntosMostrar}, (_, i) => inicio + i);
+
+            const prepararDatos = (arr) => arr.slice(inicio).map((y, i) => ({ x: indices[i], y }));
 
             const asignar = (id, arr1, arr2) => {
                 const chart = charts[id];
                 if (!chart) return;
-                chart.data.labels = labels;
-                chart.data.datasets[0].data = arr1.slice(-maxPoints);
-                if (arr2) chart.data.datasets[1].data = arr2.slice(-maxPoints);
+                chart.data.datasets[0].data = prepararDatos(arr1);
+                if (arr2) chart.data.datasets[1].data = prepararDatos(arr2);
+                // Actualizar min/max de escala x
+                chart.options.scales.x.min = inicio;
+                chart.options.scales.x.max = inicio + MAX_POINTS - 1;
                 chart.update();
             };
 
@@ -418,9 +442,10 @@
             asignar('chart-ce', datos.ce);
             // Luz
             if (charts['chart-luz']) {
-                charts['chart-luz'].data.labels = labels;
-                charts['chart-luz'].data.datasets[0].data = datos.luz_roja.slice(-maxPoints);
-                charts['chart-luz'].data.datasets[1].data = datos.luz_azul.slice(-maxPoints);
+                charts['chart-luz'].data.datasets[0].data = prepararDatos(datos.luz_roja);
+                charts['chart-luz'].data.datasets[1].data = prepararDatos(datos.luz_azul);
+                charts['chart-luz'].options.scales.x.min = inicio;
+                charts['chart-luz'].options.scales.x.max = inicio + MAX_POINTS - 1;
                 charts['chart-luz'].update();
             }
         }
