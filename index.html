@@ -3,288 +3,512 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Aeroponía - Lectura de JSON</title>
+    <title>Dashboard Aeroponía - Simulación en Vivo</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         :root {
-            --bg: #e0e5ec;
-            --shadow-dark: #a3b1c6;
-            --shadow-light: #ffffff;
-            --text: #2d3a4a;
-            --text-muted: #6c7a8a;
-            --accent: #4f8df9;
-            --success: #4caf7d;
-            --warning: #f5b042;
-            --danger: #e85d5d;
-            --radius: 16px;
-            --radius-sm: 10px;
-            --transition: 0.25s ease;
+            --bg: #e0e5ec; --shadow-dark: #a3b1c6; --shadow-light: #ffffff;
+            --text: #2d3a4a; --text-muted: #6c7a8a; --accent: #4f8df9;
+            --radius: 16px; --radius-sm: 10px;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin:0; padding:0; box-sizing:border-box; }
         body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Inter', 'Segoe UI', sans-serif;
-            padding: 1rem;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+            background: var(--bg); color: var(--text);
+            font-family: 'Inter', 'Segoe UI', sans-serif; padding: 1rem; min-height: 100vh;
+            display: flex; flex-direction: column;
         }
-        header {
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-        header h1 {
-            font-size: 1.6rem;
-            font-weight: 600;
-        }
-        header p {
-            color: var(--text-muted);
-            font-size: 0.8rem;
-        }
+        header { text-align:center; margin-bottom:1rem; }
+        header h1 { font-size:1.6rem; font-weight:600; }
+        header p { color:var(--text-muted); font-size:0.8rem; }
 
-        /* Cuadrícula de tarjetas */
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-bottom: 1rem;
+        .tabs { display:flex; justify-content:center; gap:0.8rem; margin-bottom:1rem; flex-wrap:wrap; }
+        .tab-button {
+            background: var(--bg); color: var(--text); border:none; padding:0.5rem 1.5rem;
+            border-radius:50px; cursor:pointer; font-size:0.95rem; font-weight:500;
+            box-shadow:6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+            transition: all 0.2s;
         }
-        @media (max-width: 600px) {
-            .grid {
-                grid-template-columns: 1fr;
-            }
+        .tab-button.active {
+            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+            color: var(--accent); font-weight:600;
         }
+        .tab-content { display:none; }
+        .tab-content.active { display:block; }
 
+        .grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+        @media (max-width:1024px) {
+            .grid { grid-template-columns:1fr; }
+        }
         .card {
-            background: var(--bg);
-            border-radius: var(--radius);
-            box-shadow: 8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
-            padding: 1rem;
-            transition: box-shadow var(--transition);
+            background: var(--bg); border-radius: var(--radius);
+            box-shadow:8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
+            padding:1rem;
         }
-        .card h2 {
-            font-size: 1rem;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--text);
-            text-align: center;
+        .card h2 { font-size:1rem; text-align:center; margin-bottom:0.5rem; font-weight:500; }
+        .chart-container { position:relative; height:250px; width:100%; }
+
+        .kpi-grid {
+            display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0.8rem;
+            margin-bottom:1.5rem;
         }
-        .chart-container {
-            position: relative;
-            height: 250px;
-            width: 100%;
+        .kpi-card {
+            background: var(--bg); border-radius: var(--radius-sm);
+            box-shadow:4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
+            padding:1rem; text-align:center;
         }
-        footer {
-            text-align: center;
-            margin-top: auto;
-            padding: 1rem 0 0;
-            font-size: 0.7rem;
-            color: var(--text-muted);
+        .kpi-card .label { font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; }
+        .kpi-card .value { font-size:1.8rem; font-weight:700; margin:0.3rem 0; }
+        .kpi-card .sub { font-size:0.7rem; color:var(--text-muted); }
+
+        .control-group {
+            display:grid; grid-template-columns:1fr 1fr; gap:1rem;
+            margin:1rem 0;
         }
+        @media (max-width:1024px) {
+            .control-group { grid-template-columns:1fr; }
+        }
+        .control-item {
+            background: var(--bg); border-radius: var(--radius-sm);
+            box-shadow:inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+            padding:0.8rem;
+        }
+        .control-item label {
+            display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.5rem;
+        }
+        input[type="range"] { width:100%; accent-color: var(--accent); }
+
+        .time-controls {
+            display:flex; justify-content:center; gap:1rem; margin:1rem 0;
+        }
+        .btn {
+            background: var(--bg); border:none; padding:0.5rem 1.5rem;
+            border-radius:50px; cursor:pointer; font-size:0.9rem; font-weight:500;
+            box-shadow:6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+            transition: all 0.2s;
+        }
+        .btn.active {
+            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+            color: var(--accent);
+        }
+        footer { text-align:center; margin-top:auto; padding:1rem 0 0; font-size:0.7rem; color:var(--text-muted); }
     </style>
 </head>
 <body>
     <header>
-        <h1>🌿 Dashboard Aeroponía Automatizada</h1>
-        <p>Datos horarios · 30 días · Albahaca en Asturias</p>
+        <h1>🌿 Dashboard Aeroponía - Simulación en Vivo</h1>
+        <p>Resumen y control de zonas · Agua, Raíces y Hojas · Tendencia estacional</p>
     </header>
 
-    <div class="grid">
-        <!-- Tarjeta 1: Temperatura -->
-        <div class="card">
-            <h2>🌡️ Temperatura (interior/exterior)</h2>
-            <div class="chart-container"><canvas id="chart-temperatura"></canvas></div>
-        </div>
-        <!-- Tarjeta 2: Humedad -->
-        <div class="card">
-            <h2>💧 Humedad (interior/exterior)</h2>
-            <div class="chart-container"><canvas id="chart-humedad"></canvas></div>
-        </div>
-        <!-- Tarjeta 3: Presión -->
-        <div class="card">
-            <h2>🌀 Presión Atmosférica (int/ext)</h2>
-            <div class="chart-container"><canvas id="chart-presion"></canvas></div>
-        </div>
-        <!-- Tarjeta 4: Iluminación y CE -->
-        <div class="card">
-            <h2>💡 Iluminación y Conductividad</h2>
-            <div class="chart-container"><canvas id="chart-iluminacion-ce"></canvas></div>
+    <div class="tabs">
+        <button class="tab-button active" data-tab="resumen">📊 Resumen</button>
+        <button class="tab-button" data-tab="agua">🧪 Agua</button>
+        <button class="tab-button" data-tab="raices">💧 Raíces</button>
+        <button class="tab-button" data-tab="hojas">🌱 Hojas</button>
+    </div>
+
+    <div class="time-controls">
+        <button class="btn" id="btn-acelerar">⏩ Acelerar (1h/s)</button>
+        <button class="btn" id="btn-pausa">⏸ Pausa</button>
+    </div>
+
+    <!-- Pestaña Resumen -->
+    <div id="tab-resumen" class="tab-content active">
+        <div class="kpi-grid" id="kpi-grid"></div>
+        <h2 style="text-align:center; margin:1rem 0;">Controles de setpoint</h2>
+        <div class="control-group" id="control-group"></div>
+    </div>
+
+    <!-- Pestaña Agua -->
+    <div id="tab-agua" class="tab-content">
+        <div class="grid">
+            <div class="card"><h2>⚗️ pH del agua</h2><div class="chart-container"><canvas id="chart-ph"></canvas></div></div>
+            <div class="card"><h2>🧪 Conductividad Eléctrica</h2><div class="chart-container"><canvas id="chart-ce"></canvas></div></div>
         </div>
     </div>
 
-    <footer>
-        Dashboard simplificado · Datos desde archivos JSON
-    </footer>
+    <!-- Pestaña Raíces -->
+    <div id="tab-raices" class="tab-content">
+        <div class="grid">
+            <div class="card"><h2>🌡️ Temperatura de raíz</h2><div class="chart-container"><canvas id="chart-temp-raiz"></canvas></div></div>
+            <div class="card"><h2>💧 Humedad en raíz</h2><div class="chart-container"><canvas id="chart-hum-raiz"></canvas></div></div>
+            <div class="card"><h2>🌀 Presión en raíz</h2><div class="chart-container"><canvas id="chart-pres-raiz"></canvas></div></div>
+        </div>
+    </div>
+
+    <!-- Pestaña Hojas -->
+    <div id="tab-hojas" class="tab-content">
+        <div class="grid">
+            <div class="card"><h2>🌡️ Temperatura de hojas</h2><div class="chart-container"><canvas id="chart-temp-hojas"></canvas></div></div>
+            <div class="card"><h2>💧 Humedad en hojas</h2><div class="chart-container"><canvas id="chart-hum-hojas"></canvas></div></div>
+            <div class="card"><h2>🌀 Presión en canopia</h2><div class="chart-container"><canvas id="chart-pres-hojas"></canvas></div></div>
+            <div class="card"><h2>💡 Iluminación LED</h2><div class="chart-container"><canvas id="chart-luz"></canvas></div></div>
+        </div>
+    </div>
+
+    <footer>Simulación en tiempo real · Datos generados internamente · Asturias</footer>
 
     <script>
-        // Función para cargar JSON desde archivo
-        async function cargarJSON(url) {
-            const resp = await fetch(url);
-            if (!resp.ok) throw new Error(`No se pudo cargar ${url}`);
-            return await resp.json();
+        // ================= CONFIGURACIÓN =================
+        const HOY = new Date();
+        const INICIO = new Date(HOY);
+        INICIO.setDate(HOY.getDate() - 30);
+
+        const PARAMS = {
+            temp_ext_base: 18,
+            temp_ext_tendencia: -0.4,
+            temp_ext_amp_diurna: 6,
+            hum_ext_base: 70,
+            hum_ext_amp: 15,
+            pres_base: 1015,
+            pres_amp: 6,
+            pres_periodo_horas: 48,
+            luz_roja_inicial: 150,
+            luz_roja_final: 120,
+            luz_azul_inicial: 80,
+            luz_azul_final: 110,
+            dia_cambio_espectro: 10,
+            fotoperiodo_inicio: 6,
+            fotoperiodo_fin: 22,
+            ph_setpoint: 5.8,
+            ce_setpoint: 1.8,
+            temp_setpoint: 20,
+            hum_hojas_setpoint: 62,
+            hum_raiz_setpoint: 95,
+            ruido_temp: 0.8,
+            ruido_hum: 5,
+            ruido_pres: 2,
+            ruido_ph: 0.1,
+            ruido_ce: 0.05,
+        };
+
+        let tiempoActual = new Date(INICIO);
+        let intervaloSimulacion = null;
+        let aceleracionActiva = false;
+        let datos = {
+            temp_ext: [], temp_raiz: [], temp_hojas: [],
+            hum_ext: [], hum_raiz: [], hum_hojas: [],
+            pres_ext: [], pres_raiz: [], pres_hojas: [],
+            luz_roja: [], luz_azul: [], ph: [], ce: [],
+            fechas: []
+        };
+        let fechasTooltip = []; // Para tooltips con fecha real
+
+        let charts = {};
+
+        // ================= FUNCIONES =================
+        function rand(min, max) { return min + Math.random() * (max - min); }
+
+        function cicloDiurno(hora) {
+            if (hora < 6 || hora > 22) return 0.1;
+            return Math.max(0.1, Math.sin((hora - 6) / 16 * Math.PI));
         }
 
-        // Función para extraer etiquetas de fecha (día/mes hora:min)
-        function obtenerEtiquetas(datos) {
-            return datos.map(d => {
-                const f = new Date(d.fecha);
+        function tendenciaSemanal(fecha) {
+            const semanas = Math.floor((fecha - INICIO) / (7 * 24 * 3600 * 1000));
+            return semanas * PARAMS.temp_ext_tendencia;
+        }
+
+        function generarPunto(fecha) {
+            const hora = fecha.getHours();
+            const diaCultivo = Math.floor((fecha - INICIO) / (24 * 3600 * 1000)) + 1;
+
+            // Temperatura exterior (con tendencia estacional)
+            const tempBase = PARAMS.temp_ext_base + tendenciaSemanal(fecha);
+            const tempExt = tempBase + PARAMS.temp_ext_amp_diurna * cicloDiurno(hora) + rand(-PARAMS.ruido_temp, PARAMS.ruido_temp);
+
+            // Humedad exterior (inversa a temperatura)
+            const humBase = PARAMS.hum_ext_base - (tempExt - tempBase) * 2;
+            const humExt = humBase + rand(-PARAMS.ruido_hum, PARAMS.ruido_hum);
+
+            // Presión exterior
+            const horasDesdeInicio = (fecha - INICIO) / (3600 * 1000);
+            const presExt = PARAMS.pres_base + PARAMS.pres_amp * Math.sin(horasDesdeInicio / PARAMS.pres_periodo_horas * Math.PI * 2) + rand(-PARAMS.ruido_pres, PARAMS.ruido_pres);
+
+            // Luz
+            const encendido = hora >= PARAMS.fotoperiodo_inicio && hora < PARAMS.fotoperiodo_fin;
+            let luzRoja = 0, luzAzul = 0;
+            if (encendido) {
+                const factorRojo = diaCultivo <= PARAMS.dia_cambio_espectro ? 1 : Math.max(0.7, 1 - (diaCultivo - PARAMS.dia_cambio_espectro) * 0.03);
+                const factorAzul = diaCultivo <= PARAMS.dia_cambio_espectro ? 1 : Math.min(1.3, 1 + (diaCultivo - PARAMS.dia_cambio_espectro) * 0.03);
+                luzRoja = PARAMS.luz_roja_inicial * factorRojo + rand(-3, 3);
+                luzAzul = PARAMS.luz_azul_inicial * factorAzul + rand(-3, 3);
+            }
+
+            // pH y CE (control muy ajustado)
+            const ph = PARAMS.ph_setpoint + rand(-PARAMS.ruido_ph, PARAMS.ruido_ph);
+            const ce = PARAMS.ce_setpoint + rand(-PARAMS.ruido_ce, PARAMS.ruido_ce);
+
+            // Temperaturas controladas (máx. ±0.25 °C para parecer muy estables)
+            const tempRaiz = PARAMS.temp_setpoint + rand(-0.25, 0.25);
+            const tempHojas = PARAMS.temp_setpoint + rand(-0.25, 0.25);
+
+            // Humedades controladas (también muy estables)
+            const humRaiz = PARAMS.hum_raiz_setpoint + rand(-1.5, 1.5);
+            const humHojas = PARAMS.hum_hojas_setpoint + rand(-1.5, 1.5);
+
+            return {
+                fecha,
+                temp_ext: +tempExt.toFixed(1),
+                temp_raiz: +tempRaiz.toFixed(1),
+                temp_hojas: +tempHojas.toFixed(1),
+                hum_ext: +humExt.toFixed(1),
+                hum_raiz: +humRaiz.toFixed(1),
+                hum_hojas: +humHojas.toFixed(1),
+                pres_ext: +presExt.toFixed(1),
+                pres_raiz: +(presExt + rand(-0.1, 0.1)).toFixed(1),
+                pres_hojas: +(presExt + rand(-0.1, 0.1)).toFixed(1),
+                luz_roja: Math.round(luzRoja),
+                luz_azul: Math.round(luzAzul),
+                ph: +ph.toFixed(2),
+                ce: +ce.toFixed(2)
+            };
+        }
+
+        function agregarPunto(punto) {
+            datos.fechas.push(punto.fecha);
+            datos.temp_ext.push(punto.temp_ext);
+            datos.temp_raiz.push(punto.temp_raiz);
+            datos.temp_hojas.push(punto.temp_hojas);
+            datos.hum_ext.push(punto.hum_ext);
+            datos.hum_raiz.push(punto.hum_raiz);
+            datos.hum_hojas.push(punto.hum_hojas);
+            datos.pres_ext.push(punto.pres_ext);
+            datos.pres_raiz.push(punto.pres_raiz);
+            datos.pres_hojas.push(punto.pres_hojas);
+            datos.luz_roja.push(punto.luz_roja);
+            datos.luz_azul.push(punto.luz_azul);
+            datos.ph.push(punto.ph);
+            datos.ce.push(punto.ce);
+        }
+
+        function generarHistorico() {
+            for (let i = 0; i < 30 * 24; i++) {
+                const fecha = new Date(INICIO);
+                fecha.setHours(INICIO.getHours() + i);
+                const punto = generarPunto(fecha);
+                agregarPunto(punto);
+            }
+            tiempoActual = new Date(HOY);
+        }
+
+        function avanzarHora() {
+            tiempoActual.setHours(tiempoActual.getHours() + 1);
+            const punto = generarPunto(tiempoActual);
+            agregarPunto(punto);
+            actualizarGraficos();
+            actualizarKPIs();
+        }
+
+        // ================= GRÁFICOS =================
+        function crearGrafico(id, datasets) {
+            const ctx = document.getElementById(id).getContext('2d');
+            charts[id] = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        tooltip: {
+                            backgroundColor: 'rgba(45,58,74,0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#e2e8f0',
+                            borderColor: '#4f8df9',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: true,
+                            callbacks: {
+                                title: function(items) {
+                                    if (items.length > 0 && fechasTooltip[items[0].dataIndex]) {
+                                        return fechasTooltip[items[0].dataIndex].toLocaleString();
+                                    }
+                                    return '';
+                                },
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y;
+                                        const unit = context.dataset.unit || '';
+                                        if (unit) label += ' ' + unit;
+                                    }
+                                    return label;
+                                }
+                            }
+                        },
+                        legend: { labels: { color: '#2d3a4a', boxWidth: 10, font: { size: 9 } } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#6c7a8a', maxTicksLimit: 10, font: { size: 9 } }, grid: { color: '#c9d1db' } },
+                        y: { 
+                            ticks: { color: '#6c7a8a', font: { size: 9 } },
+                            grid: { color: '#c9d1db' },
+                            grace: '20%'  // Añade 20% de margen vertical
+                        }
+                    }
+                }
+            });
+        }
+
+        function crearGraficosSiNoExisten() {
+            if (Object.keys(charts).length > 0) return;
+
+            crearGrafico('chart-temp-raiz', [
+                { label: 'Raíz', data: [], borderColor: '#e85d5d', backgroundColor: '#e85d5d22', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '°C' },
+                { label: 'Exterior', data: [], borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '°C' }
+            ]);
+            crearGrafico('chart-temp-hojas', [
+                { label: 'Hojas', data: [], borderColor: '#e85d5d', backgroundColor: '#e85d5d22', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '°C' },
+                { label: 'Exterior', data: [], borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '°C' }
+            ]);
+            crearGrafico('chart-hum-raiz', [
+                { label: 'Raíz', data: [], borderColor: '#4caf7d', backgroundColor: '#4caf7d22', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '%' },
+                { label: 'Exterior', data: [], borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '%' }
+            ]);
+            crearGrafico('chart-hum-hojas', [
+                { label: 'Hojas', data: [], borderColor: '#4caf7d', backgroundColor: '#4caf7d22', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '%' },
+                { label: 'Exterior', data: [], borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '%' }
+            ]);
+            crearGrafico('chart-pres-raiz', [
+                { label: 'Raíz', data: [], borderColor: '#9aa5b1', backgroundColor: '#9aa5b122', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: 'hPa' },
+                { label: 'Exterior', data: [], borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, unit: 'hPa' }
+            ]);
+            crearGrafico('chart-pres-hojas', [
+                { label: 'Hojas', data: [], borderColor: '#9aa5b1', backgroundColor: '#9aa5b122', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: 'hPa' },
+                { label: 'Exterior', data: [], borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, unit: 'hPa' }
+            ]);
+            crearGrafico('chart-ph', [
+                { label: 'pH', data: [], borderColor: '#f5b042', backgroundColor: '#f5b04222', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '' }
+            ]);
+            crearGrafico('chart-ce', [
+                { label: 'CE', data: [], borderColor: '#9aa5b1', backgroundColor: '#9aa5b122', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: 'mS/cm' }
+            ]);
+            crearGrafico('chart-luz', [
+                { label: 'Roja', data: [], borderColor: '#e85d5d', backgroundColor: '#e85d5d22', fill: true, tension: 0.3, pointRadius: 0, unit: 'µmol/m²/s' },
+                { label: 'Azul', data: [], borderColor: '#4f8df9', backgroundColor: '#4f8df922', fill: true, tension: 0.3, pointRadius: 0, unit: 'µmol/m²/s' }
+            ]);
+        }
+
+        function actualizarGraficos() {
+            if (Object.keys(charts).length === 0) return;
+            const maxPoints = 72;
+            const labels = datos.fechas.slice(-maxPoints).map(d => {
+                const f = new Date(d);
                 return `${f.getDate()}/${f.getMonth()+1} ${f.getHours()}:00`;
             });
-        }
+            fechasTooltip = datos.fechas.slice(-maxPoints); // Guardar fechas reales
 
-        // Función para crear gráfico de dos líneas (interior vs exterior)
-        function crearGraficoDoble(canvasId, labels, dataInt, dataExt, colorInt, labelInt, colorExt, labelExt) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [
-                        {
-                            label: labelInt,
-                            data: dataInt,
-                            borderColor: colorInt,
-                            backgroundColor: colorInt + '22',
-                            fill: true,
-                            tension: 0.3,
-                            pointRadius: 0,
-                            borderWidth: 2
-                        },
-                        {
-                            label: labelExt,
-                            data: dataExt,
-                            borderColor: colorExt,
-                            backgroundColor: 'transparent',
-                            tension: 0.3,
-                            pointRadius: 0,
-                            borderWidth: 2
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: true, labels: { color: '#2d3a4a', boxWidth: 12, font: { size: 10 } } },
-                        tooltip: { mode: 'index', intersect: false }
-                    },
-                    scales: {
-                        x: { ticks: { color: '#6c7a8a', maxTicksLimit: 10, font: { size: 9 } }, grid: { color: '#c9d1db' } },
-                        y: { ticks: { color: '#6c7a8a', font: { size: 9 } }, grid: { color: '#c9d1db' } }
-                    }
-                }
-            });
-        }
+            const asignar = (id, arr1, arr2) => {
+                const chart = charts[id];
+                if (!chart) return;
+                chart.data.labels = labels;
+                chart.data.datasets[0].data = arr1.slice(-maxPoints);
+                if (arr2) chart.data.datasets[1].data = arr2.slice(-maxPoints);
+                chart.update();
+            };
 
-        // Función para gráfico de iluminación + CE (doble eje)
-        function crearGraficoIluminacionCE(canvasId, labels, luzRoja, luzAzul, ce) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [
-                        {
-                            label: 'Luz Roja',
-                            data: luzRoja,
-                            borderColor: '#e85d5d',
-                            backgroundColor: '#e85d5d22',
-                            fill: true,
-                            tension: 0.3,
-                            pointRadius: 0,
-                            borderWidth: 2,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'Luz Azul',
-                            data: luzAzul,
-                            borderColor: '#4f8df9',
-                            backgroundColor: '#4f8df922',
-                            fill: true,
-                            tension: 0.3,
-                            pointRadius: 0,
-                            borderWidth: 2,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'CE (mS/cm)',
-                            data: ce,
-                            borderColor: '#f5b042',
-                            backgroundColor: 'transparent',
-                            tension: 0.3,
-                            pointRadius: 0,
-                            borderWidth: 2,
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: true, labels: { color: '#2d3a4a', boxWidth: 12, font: { size: 10 } } },
-                        tooltip: { mode: 'index', intersect: false }
-                    },
-                    scales: {
-                        x: { ticks: { color: '#6c7a8a', maxTicksLimit: 10, font: { size: 9 } }, grid: { color: '#c9d1db' } },
-                        y: {
-                            type: 'linear',
-                            position: 'left',
-                            ticks: { color: '#6c7a8a', font: { size: 9 } },
-                            title: { display: true, text: 'µmol/m²/s', color: '#6c7a8a' }
-                        },
-                        y1: {
-                            type: 'linear',
-                            position: 'right',
-                            ticks: { color: '#6c7a8a', font: { size: 9 } },
-                            grid: { drawOnChartArea: false },
-                            title: { display: true, text: 'mS/cm', color: '#6c7a8a' }
-                        }
-                    }
-                }
-            });
-        }
-
-        // ==================== INICIALIZACIÓN ====================
-        async function init() {
-            try {
-                // Cargar los 4 JSON
-                const [tempData, humData, presData, ilumData] = await Promise.all([
-                    cargarJSON('temperatura.json'),
-                    cargarJSON('humedad.json'),
-                    cargarJSON('presion.json'),
-                    cargarJSON('iluminacion_conductividad.json')
-                ]);
-
-                // Etiquetas comunes (asumimos misma fecha)
-                const labels = obtenerEtiquetas(tempData.datos);
-
-                // 1. Temperatura
-                const tempInt = tempData.datos.map(d => d.temp_int);
-                const tempExt = tempData.datos.map(d => d.temp_ext);
-                crearGraficoDoble('chart-temperatura', labels, tempInt, tempExt, '#4f8df9', 'Interior (°C)', '#94a3b8', 'Exterior (°C)');
-
-                // 2. Humedad
-                const humInt = humData.datos.map(d => d.hum_int);
-                const humExt = humData.datos.map(d => d.hum_ext);
-                crearGraficoDoble('chart-humedad', labels, humInt, humExt, '#4caf7d', 'Interior (%)', '#94a3b8', 'Exterior (%)');
-
-                // 3. Presión
-                const presInt = presData.datos.map(d => d.pres_int);
-                const presExt = presData.datos.map(d => d.pres_ext);
-                crearGraficoDoble('chart-presion', labels, presInt, presExt, '#9aa5b1', 'Interior (hPa)', '#94a3b8', 'Exterior (hPa)');
-
-                // 4. Iluminación y CE
-                const luzRoja = ilumData.datos.map(d => d.luz_roja);
-                const luzAzul = ilumData.datos.map(d => d.luz_azul);
-                const ce = ilumData.datos.map(d => d.ce);
-                crearGraficoIluminacionCE('chart-iluminacion-ce', labels, luzRoja, luzAzul, ce);
-
-            } catch (error) {
-                console.error('Error cargando datos:', error);
-                document.body.innerHTML += `<p style="color:red; text-align:center;">No se pudieron cargar los archivos JSON. Asegúrate de que estén en el mismo directorio.</p>`;
+            asignar('chart-temp-raiz', datos.temp_raiz, datos.temp_ext);
+            asignar('chart-temp-hojas', datos.temp_hojas, datos.temp_ext);
+            asignar('chart-hum-raiz', datos.hum_raiz, datos.hum_ext);
+            asignar('chart-hum-hojas', datos.hum_hojas, datos.hum_ext);
+            asignar('chart-pres-raiz', datos.pres_raiz, datos.pres_ext);
+            asignar('chart-pres-hojas', datos.pres_hojas, datos.pres_ext);
+            asignar('chart-ph', datos.ph);
+            asignar('chart-ce', datos.ce);
+            // Luz
+            if (charts['chart-luz']) {
+                charts['chart-luz'].data.labels = labels;
+                charts['chart-luz'].data.datasets[0].data = datos.luz_roja.slice(-maxPoints);
+                charts['chart-luz'].data.datasets[1].data = datos.luz_azul.slice(-maxPoints);
+                charts['chart-luz'].update();
             }
+        }
+
+        function actualizarKPIs() {
+            const n = Math.min(100, datos.fechas.length);
+            const slice = (arr) => arr.slice(-n);
+            const prom = (arr) => (arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(1);
+
+            document.getElementById('kpi-grid').innerHTML = `
+                <div class="kpi-card"><div class="label">Temp Hojas</div><div class="value">${prom(slice(datos.temp_hojas))}°C</div><div class="sub">Objetivo ${PARAMS.temp_setpoint}°C</div></div>
+                <div class="kpi-card"><div class="label">Temp Raíz</div><div class="value">${prom(slice(datos.temp_raiz))}°C</div><div class="sub">Objetivo ${PARAMS.temp_setpoint}°C</div></div>
+                <div class="kpi-card"><div class="label">Hum Hojas</div><div class="value">${prom(slice(datos.hum_hojas))}%</div><div class="sub">Objetivo ${PARAMS.hum_hojas_setpoint}%</div></div>
+                <div class="kpi-card"><div class="label">Hum Raíz</div><div class="value">${prom(slice(datos.hum_raiz))}%</div><div class="sub">Objetivo ${PARAMS.hum_raiz_setpoint}%</div></div>
+                <div class="kpi-card"><div class="label">pH</div><div class="value">${prom(slice(datos.ph))}</div><div class="sub">Objetivo ${PARAMS.ph_setpoint}</div></div>
+                <div class="kpi-card"><div class="label">CE</div><div class="value">${prom(slice(datos.ce))} mS/cm</div><div class="sub">Objetivo ${PARAMS.ce_setpoint}</div></div>
+                <div class="kpi-card"><div class="label">Luz Roja (día)</div><div class="value">${Math.round(prom(slice(datos.luz_roja.filter(v => v > 0))))} µmol</div><div class="sub">Promedio diurno</div></div>
+                <div class="kpi-card"><div class="label">Luz Azul (día)</div><div class="value">${Math.round(prom(slice(datos.luz_azul.filter(v => v > 0))))} µmol</div><div class="sub">Promedio diurno</div></div>
+            `;
+        }
+
+        // ================= CONTROLES =================
+        function crearControles() {
+            const controlContainer = document.getElementById('control-group');
+            const controles = [
+                { id:'ctrl-temp', label:'Temperatura', min:15, max:30, value:PARAMS.temp_setpoint, unit:'°C', param:'temp_setpoint' },
+                { id:'ctrl-hum-hojas', label:'Humedad Hojas', min:40, max:100, value:PARAMS.hum_hojas_setpoint, unit:'%', param:'hum_hojas_setpoint' },
+                { id:'ctrl-hum-raiz', label:'Humedad Raíz', min:80, max:100, value:PARAMS.hum_raiz_setpoint, unit:'%', param:'hum_raiz_setpoint' },
+                { id:'ctrl-luz-roja', label:'Luz Roja', min:0, max:200, value:PARAMS.luz_roja_inicial, unit:'µmol', param:'luz_roja_inicial' },
+                { id:'ctrl-luz-azul', label:'Luz Azul', min:0, max:200, value:PARAMS.luz_azul_inicial, unit:'µmol', param:'luz_azul_inicial' },
+                { id:'ctrl-ph', label:'pH', min:4, max:8, step:0.1, value:PARAMS.ph_setpoint, unit:'', param:'ph_setpoint' },
+                { id:'ctrl-ce', label:'CE', min:1, max:3, step:0.1, value:PARAMS.ce_setpoint, unit:'mS/cm', param:'ce_setpoint' }
+            ];
+            controlContainer.innerHTML = controles.map(c => `
+                <div class="control-item">
+                    <label>${c.label} <span id="${c.id}-val">${c.value}${c.unit}</span></label>
+                    <input type="range" id="${c.id}" min="${c.min}" max="${c.max}" step="${c.step||1}" value="${c.value}">
+                </div>
+            `).join('');
+
+            controles.forEach(c => {
+                const slider = document.getElementById(c.id);
+                slider.addEventListener('input', () => {
+                    const val = parseFloat(slider.value);
+                    document.getElementById(c.id+'-val').textContent = val + c.unit;
+                    PARAMS[c.param] = val;
+                });
+            });
+        }
+
+        // ================= CONTROL DE TIEMPO =================
+        function iniciarAceleracion() {
+            if (aceleracionActiva) return;
+            aceleracionActiva = true;
+            document.getElementById('btn-acelerar').classList.add('active');
+            intervaloSimulacion = setInterval(() => avanzarHora(), 1000);
+        }
+
+        function pausar() {
+            aceleracionActiva = false;
+            document.getElementById('btn-acelerar').classList.remove('active');
+            clearInterval(intervaloSimulacion);
+        }
+
+        // ================= INICIALIZACIÓN =================
+        function init() {
+            generarHistorico();
+            crearControles();
+            actualizarKPIs();
+
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-button').forEach(b=>b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+                    btn.classList.add('active');
+                    const tabId = btn.dataset.tab;
+                    document.getElementById('tab-' + tabId).classList.add('active');
+                    if (tabId !== 'resumen' && Object.keys(charts).length === 0) {
+                        crearGraficosSiNoExisten();
+                        actualizarGraficos();
+                    } else if (Object.keys(charts).length > 0) {
+                        Object.values(charts).forEach(chart => chart.resize());
+                    }
+                });
+            });
+
+            document.getElementById('btn-acelerar').addEventListener('click', iniciarAceleracion);
+            document.getElementById('btn-pausa').addEventListener('click', pausar);
         }
 
         window.addEventListener('DOMContentLoaded', init);
