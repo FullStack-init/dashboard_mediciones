@@ -42,9 +42,73 @@
             background: var(--bg); border-radius: var(--radius);
             box-shadow:8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
             padding:1rem;
+            position: relative;
+            padding-top: 2.5rem; /* espacio para leyenda y botones de rango */
         }
         .card h2 { font-size:1rem; text-align:center; margin-bottom:0.5rem; font-weight:500; }
-        .chart-container { position:relative; height:250px; width:100%; }
+        .chart-container { position:relative; height:220px; width:100%; }
+
+        .chart-range-controls {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            display: flex;
+            gap: 0.3rem;
+            z-index: 10;
+        }
+        .chart-range-btn {
+            background: var(--bg);
+            border: none;
+            padding: 0.2rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            box-shadow: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+            transition: all 0.2s;
+            color: var(--text);
+        }
+        .chart-range-btn.active {
+            box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* Leyenda personalizada */
+        .custom-legend {
+            position: absolute;
+            top: 2.2rem; /* debajo de los botones de rango */
+            left: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .custom-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.7rem;
+            color: var(--text);
+        }
+        .custom-legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+
+        .last-value-badge {
+            position: absolute;
+            background: rgba(45,58,74,0.9);
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            pointer-events: none;
+            transform: translate(-50%, -120%);
+            white-space: nowrap;
+            z-index: 20;
+        }
 
         .kpi-grid {
             display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0.8rem;
@@ -87,10 +151,19 @@
             box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
             color: var(--accent);
         }
-        .range-controls {
-            display:flex; justify-content:center; gap:0.5rem; margin:0.5rem 0;
-        }
         footer { text-align:center; margin-top:auto; padding:1rem 0 0; font-size:0.7rem; color:var(--text-muted); }
+
+        .history-scroll {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 0.5rem auto;
+            max-width: 800px;
+            padding: 0 1rem;
+        }
+        .history-scroll input[type="range"] {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -112,10 +185,10 @@
         <button class="btn" id="btn-ultimo">⟲ Ir al final</button>
     </div>
 
-    <div class="range-controls">
-        <button class="btn range-btn active" data-range="24">1 día</button>
-        <button class="btn range-btn" data-range="168">1 semana</button>
-        <button class="btn range-btn" data-range="720">30 días</button>
+    <div class="history-scroll">
+        <span>Inicio</span>
+        <input type="range" id="history-slider" min="0" max="0" step="1" value="0">
+        <span>Fin</span>
     </div>
 
     <!-- Pestañas -->
@@ -126,23 +199,104 @@
     </div>
     <div id="tab-agua" class="tab-content">
         <div class="grid">
-            <div class="card"><h2>⚗️ pH del agua</h2><div class="chart-container"><canvas id="chart-ph"></canvas></div></div>
-            <div class="card"><h2>🧪 Conductividad Eléctrica</h2><div class="chart-container"><canvas id="chart-ce"></canvas></div></div>
+            <div class="card">
+                <div class="chart-range-controls">
+                    <button class="chart-range-btn" data-range="24">1d</button>
+                    <button class="chart-range-btn active" data-range="168">1s</button>
+                    <button class="chart-range-btn" data-range="720">30d</button>
+                </div>
+                <h2>⚗️ pH del agua</h2>
+                <div class="custom-legend" id="legend-chart-ph"></div>
+                <div class="chart-container"><canvas id="chart-ph"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="chart-range-controls">
+                    <button class="chart-range-btn" data-range="24">1d</button>
+                    <button class="chart-range-btn active" data-range="168">1s</button>
+                    <button class="chart-range-btn" data-range="720">30d</button>
+                </div>
+                <h2>🧪 Conductividad Eléctrica</h2>
+                <div class="custom-legend" id="legend-chart-ce"></div>
+                <div class="chart-container"><canvas id="chart-ce"></canvas></div>
+            </div>
         </div>
     </div>
     <div id="tab-raices" class="tab-content">
         <div class="grid">
-            <div class="card"><h2>🌡️ Temperatura de raíz</h2><div class="chart-container"><canvas id="chart-temp-raiz"></canvas></div></div>
-            <div class="card"><h2>💧 Humedad en raíz</h2><div class="chart-container"><canvas id="chart-hum-raiz"></canvas></div></div>
-            <div class="card"><h2>🌀 Presión en raíz</h2><div class="chart-container"><canvas id="chart-pres-raiz"></canvas></div></div>
+            <div class="card">
+                <div class="chart-range-controls">
+                    <button class="chart-range-btn" data-range="24">1d</button>
+                    <button class="chart-range-btn active" data-range="168">1s</button>
+                    <button class="chart-range-btn" data-range="720">30d</button>
+                </div>
+                <h2>🌡️ Temperatura de raíz</h2>
+                <div class="custom-legend" id="legend-chart-temp-raiz"></div>
+                <div class="chart-container"><canvas id="chart-temp-raiz"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="chart-range-controls">
+                    <button class="chart-range-btn" data-range="24">1d</button>
+                    <button class="chart-range-btn active" data-range="168">1s</button>
+                    <button class="chart-range-btn" data-range="720">30d</button>
+                </div>
+                <h2>💧 Humedad en raíz</h2>
+                <div class="custom-legend" id="legend-chart-hum-raiz"></div>
+                <div class="chart-container"><canvas id="chart-hum-raiz"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="chart-range-controls">
+                    <button class="chart-range-btn" data-range="24">1d</button>
+                    <button class="chart-range-btn active" data-range="168">1s</button>
+                    <button class="chart-range-btn" data-range="720">30d</button>
+                </div>
+                <h2>🌀 Presión en raíz</h2>
+                <div class="custom-legend" id="legend-chart-pres-raiz"></div>
+                <div class="chart-container"><canvas id="chart-pres-raiz"></canvas></div>
+            </div>
         </div>
     </div>
     <div id="tab-hojas" class="tab-content">
         <div class="grid">
-            <div class="card"><h2>🌡️ Temperatura de hojas</h2><div class="chart-container"><canvas id="chart-temp-hojas"></canvas></div></div>
-            <div class="card"><h2>💧 Humedad en hojas</h2><div class="chart-container"><canvas id="chart-hum-hojas"></canvas></div></div>
-            <div class="card"><h2>🌀 Presión en canopia</h2><div class="chart-container"><canvas id="chart-pres-hojas"></canvas></div></div>
-            <div class="card"><h2>💡 Iluminación LED</h2><div class="chart-container"><canvas id="chart-luz"></canvas></div></div>
+            <div class="card">
+                <div class="chart-range-controls">
+                    <button class="chart-range-btn" data-range="24">1d</button>
+                    <button class="chart-range-btn active" data-range="168">1s</button>
+                    <button class="chart-range-btn" data-range="720">30d</button>
+                </div>
+                <h2>🌡️ Temperatura de hojas</h2>
+                <div class="custom-legend" id="legend-chart-temp-hojas"></div>
+                <div class="chart-container"><canvas id="chart-temp-hojas"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="chart-range-controls">
+                    <button class="chart-range-btn" data-range="24">1d</button>
+                    <button class="chart-range-btn active" data-range="168">1s</button>
+                    <button class="chart-range-btn" data-range="720">30d</button>
+                </div>
+                <h2>💧 Humedad en hojas</h2>
+                <div class="custom-legend" id="legend-chart-hum-hojas"></div>
+                <div class="chart-container"><canvas id="chart-hum-hojas"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="chart-range-controls">
+                    <button class="chart-range-btn" data-range="24">1d</button>
+                    <button class="chart-range-btn active" data-range="168">1s</button>
+                    <button class="chart-range-btn" data-range="720">30d</button>
+                </div>
+                <h2>🌀 Presión en canopia</h2>
+                <div class="custom-legend" id="legend-chart-pres-hojas"></div>
+                <div class="chart-container"><canvas id="chart-pres-hojas"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="chart-range-controls">
+                    <button class="chart-range-btn" data-range="24">1d</button>
+                    <button class="chart-range-btn active" data-range="168">1s</button>
+                    <button class="chart-range-btn" data-range="720">30d</button>
+                </div>
+                <h2>💡 Iluminación LED</h2>
+                <div class="custom-legend" id="legend-chart-luz"></div>
+                <div class="chart-container"><canvas id="chart-luz"></canvas></div>
+            </div>
         </div>
     </div>
 
@@ -194,14 +348,75 @@
         };
         let charts = {};
 
-        // Ventana visible
-        let windowPoints = 24; // puntos visibles (1 día por defecto)
-        let margenDerecho = Math.round(windowPoints * 0.3); // 30% del ancho
-        let totalWidth = windowPoints + margenDerecho; // Ancho total fijo
+        // Ventana visible (por defecto 1 semana)
+        let windowPoints = 168;
+        let margenDerecho = Math.round(windowPoints * 0.3);
+        let totalWidth = windowPoints + margenDerecho;
         let currentMin = 0;
         let currentMax = windowPoints - 1;
         let isAutoScroll = true;
-        let puntosVisibles = Math.floor(totalWidth * 0.7); // Fase inicial: 70% del ancho total
+        let puntosVisibles = Math.floor(totalWidth * 0.7);
+
+        // Función para crear leyenda personalizada
+        function crearLeyenda(legendId, datasets) {
+            const container = document.getElementById(legendId);
+            if (!container) return;
+            container.innerHTML = '';
+            datasets.forEach(ds => {
+                const item = document.createElement('div');
+                item.className = 'custom-legend-item';
+                const colorBox = document.createElement('span');
+                colorBox.className = 'custom-legend-color';
+                colorBox.style.backgroundColor = ds.borderColor;
+                const label = document.createElement('span');
+                label.textContent = ds.label;
+                if (ds.unit) label.textContent += ` (${ds.unit})`;
+                item.appendChild(colorBox);
+                item.appendChild(label);
+                container.appendChild(item);
+            });
+        }
+
+        // Plugin para badge de última medición
+        const badgePlugin = {
+            id: 'lastValueBadge',
+            afterDraw(chart) {
+                const ctx = chart.ctx;
+                const chartArea = chart.chartArea;
+                if (!chartArea) return;
+
+                const datasets = chart.data.datasets;
+                if (!datasets.length || !datasets[0].data.length) return;
+
+                const data = datasets[0].data;
+                const lastPoint = data[data.length - 1];
+                if (lastPoint.x === undefined) return;
+
+                const x = chart.scales.x.getPixelForValue(lastPoint.x);
+                const y = chart.scales.y.getPixelForValue(lastPoint.y);
+
+                const container = chart.canvas.parentNode;
+                let badge = container.querySelector('.last-value-badge');
+                if (!badge) {
+                    badge = document.createElement('div');
+                    badge.className = 'last-value-badge';
+                    container.appendChild(badge);
+                }
+
+                const value = lastPoint.y;
+                const unit = datasets[0].unit || '';
+                badge.textContent = `${value}${unit ? ' ' + unit : ''}`;
+
+                const canvasRect = chart.canvas.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                const relativeX = x - (canvasRect.left - containerRect.left);
+                const relativeY = y - (canvasRect.top - containerRect.top);
+                badge.style.left = relativeX + 'px';
+                badge.style.top = relativeY + 'px';
+            }
+        };
+
+        Chart.register(badgePlugin);
 
         // ================= FUNCIONES =================
         function rand(min, max) { return min + Math.random() * (max - min); }
@@ -308,7 +523,7 @@
         }
 
         // ================= GRÁFICOS =================
-        function crearGrafico(id, datasets) {
+        function crearGrafico(id, datasets, legendId) {
             const ctx = document.getElementById(id).getContext('2d');
             const chart = new Chart(ctx, {
                 type: 'line',
@@ -353,7 +568,7 @@
                                 }
                             }
                         },
-                        legend: { labels: { color: '#2d3a4a', boxWidth: 10, font: { size: 9 } } },
+                        legend: { display: false }, // Ocultamos la leyenda nativa
                         zoom: {
                             pan: {
                                 enabled: true,
@@ -362,6 +577,7 @@
                                     isAutoScroll = false;
                                     currentMin = chart.scales.x.min;
                                     currentMax = chart.scales.x.max;
+                                    document.getElementById('history-slider').value = Math.round(currentMin);
                                 }
                             }
                         }
@@ -395,6 +611,8 @@
                 }
             });
             charts[id] = chart;
+            // Crear leyenda personalizada
+            crearLeyenda(legendId, datasets);
         }
 
         function crearGraficosSiNoExisten() {
@@ -403,37 +621,37 @@
             crearGrafico('chart-temp-raiz', [
                 { label: 'Raíz', data: [], borderColor: '#e85d5d', backgroundColor: '#e85d5d22', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '°C' },
                 { label: 'Exterior', data: [], borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '°C' }
-            ]);
+            ], 'legend-chart-temp-raiz');
             crearGrafico('chart-temp-hojas', [
                 { label: 'Hojas', data: [], borderColor: '#e85d5d', backgroundColor: '#e85d5d22', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '°C' },
                 { label: 'Exterior', data: [], borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '°C' }
-            ]);
+            ], 'legend-chart-temp-hojas');
             crearGrafico('chart-hum-raiz', [
                 { label: 'Raíz', data: [], borderColor: '#4caf7d', backgroundColor: '#4caf7d22', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '%' },
                 { label: 'Exterior', data: [], borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '%' }
-            ]);
+            ], 'legend-chart-hum-raiz');
             crearGrafico('chart-hum-hojas', [
                 { label: 'Hojas', data: [], borderColor: '#4caf7d', backgroundColor: '#4caf7d22', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '%' },
                 { label: 'Exterior', data: [], borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '%' }
-            ]);
+            ], 'legend-chart-hum-hojas');
             crearGrafico('chart-pres-raiz', [
                 { label: 'Raíz', data: [], borderColor: '#9aa5b1', backgroundColor: '#9aa5b122', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: 'hPa' },
                 { label: 'Exterior', data: [], borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, unit: 'hPa' }
-            ]);
+            ], 'legend-chart-pres-raiz');
             crearGrafico('chart-pres-hojas', [
                 { label: 'Hojas', data: [], borderColor: '#9aa5b1', backgroundColor: '#9aa5b122', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: 'hPa' },
                 { label: 'Exterior', data: [], borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, unit: 'hPa' }
-            ]);
+            ], 'legend-chart-pres-hojas');
             crearGrafico('chart-ph', [
                 { label: 'pH', data: [], borderColor: '#f5b042', backgroundColor: '#f5b04222', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: '' }
-            ]);
+            ], 'legend-chart-ph');
             crearGrafico('chart-ce', [
                 { label: 'CE', data: [], borderColor: '#9aa5b1', backgroundColor: '#9aa5b122', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, unit: 'mS/cm' }
-            ]);
+            ], 'legend-chart-ce');
             crearGrafico('chart-luz', [
                 { label: 'Roja', data: [], borderColor: '#e85d5d', backgroundColor: '#e85d5d22', fill: true, tension: 0.3, pointRadius: 0, unit: 'µmol/m²/s' },
                 { label: 'Azul', data: [], borderColor: '#4f8df9', backgroundColor: '#4f8df922', fill: true, tension: 0.3, pointRadius: 0, unit: 'µmol/m²/s' }
-            ]);
+            ], 'legend-chart-luz');
         }
 
         function actualizarGraficos() {
@@ -443,19 +661,19 @@
             if (total === 0) return;
 
             let inicio, fin, maxEscala;
-            const totalWidthActual = windowPoints + margenDerecho; // Asegura usar el ancho total actual
+            const totalWidthActual = windowPoints + margenDerecho;
 
             if (isAutoScroll) {
                 if (puntosVisibles < totalWidthActual) {
-                    // Fase inicial: vista fija desde 0
+                    // Fase inicial fija con margen
                     inicio = 0;
                     fin = puntosVisibles - 1;
-                    maxEscala = totalWidthActual - 1; // Fijo para que no se mueva
+                    maxEscala = totalWidthActual - 1;
                 } else {
-                    // Desplazamiento normal
+                    // Desplazamiento normal: sin margen, 100% ancho
                     fin = total - 1;
                     inicio = Math.max(0, fin - windowPoints + 1);
-                    maxEscala = fin + margenDerecho;
+                    maxEscala = fin;
                 }
                 currentMin = inicio;
                 currentMax = fin;
@@ -466,6 +684,13 @@
                 maxEscala = fin;
                 currentMin = inicio;
                 currentMax = fin;
+            }
+
+            // Actualizar barra de scroll global
+            const slider = document.getElementById('history-slider');
+            if (slider) {
+                slider.max = total - windowPoints;
+                slider.value = Math.round(inicio);
             }
 
             const indices = Array.from({length: fin - inicio + 1}, (_, i) => inicio + i);
@@ -562,7 +787,7 @@
             isAutoScroll = true;
             currentMax = datos.fechas.length - 1;
             currentMin = Math.max(0, currentMax - windowPoints + 1);
-            puntosVisibles = totalWidth; // Fase completada
+            puntosVisibles = totalWidth;
             actualizarGraficos();
         }
 
@@ -572,17 +797,32 @@
             crearControles();
             actualizarKPIs();
 
-            document.querySelectorAll('.range-btn').forEach(btn => {
+            // Barra de scroll manual
+            const historySlider = document.getElementById('history-slider');
+            historySlider.addEventListener('input', () => {
+                isAutoScroll = false;
+                currentMin = parseInt(historySlider.value);
+                currentMax = currentMin + windowPoints - 1;
+                if (currentMax >= datos.fechas.length) currentMax = datos.fechas.length - 1;
+                actualizarGraficos();
+            });
+
+            // Botones de rango
+            document.querySelectorAll('.chart-range-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    windowPoints = parseInt(btn.dataset.range);
+                    const range = parseInt(btn.dataset.range);
+                    windowPoints = range;
                     margenDerecho = Math.round(windowPoints * 0.3);
                     totalWidth = windowPoints + margenDerecho;
                     puntosVisibles = Math.min(totalWidth, datos.fechas.length);
                     isAutoScroll = true;
                     currentMin = 0;
                     currentMax = windowPoints - 1;
+
+                    // Actualizar clases activas
+                    document.querySelectorAll(`.chart-range-btn[data-range="${range}"]`).forEach(b => b.classList.add('active'));
+                    document.querySelectorAll(`.chart-range-btn:not([data-range="${range}"])`).forEach(b => b.classList.remove('active'));
+
                     actualizarGraficos();
                 });
             });
