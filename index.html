@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Aeroponía - Albahaca</title>
+    <title>Dashboard Aeroponía - Lectura de JSON</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         :root {
@@ -43,134 +43,37 @@
             font-size: 0.8rem;
         }
 
-        .system-status {
-            display: flex;
-            justify-content: center;
+        /* Cuadrícula de tarjetas */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
             margin-bottom: 1rem;
         }
-        .status-pill {
-            background: var(--bg);
-            border-radius: 50px;
-            box-shadow: 4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
-            padding: 0.4rem 1.2rem;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+        @media (max-width: 600px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
         }
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--success);
-            box-shadow: 0 0 6px var(--success);
-        }
-        .status-dot.warning { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
-        .status-dot.danger { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
-
-        .tabs {
-            display: flex;
-            justify-content: center;
-            gap: 0.8rem;
-            margin-bottom: 1rem;
-        }
-        .tab-button {
-            background: var(--bg);
-            color: var(--text);
-            border: none;
-            padding: 0.5rem 1.5rem;
-            font-size: 0.95rem;
-            cursor: pointer;
-            border-radius: 50px;
-            box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
-            transition: all var(--transition);
-            font-weight: 500;
-        }
-        .tab-button.active {
-            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
-            color: var(--accent);
-            font-weight: 600;
-        }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
 
         .card {
             background: var(--bg);
             border-radius: var(--radius);
             box-shadow: 8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
-            margin-bottom: 0.8rem;
-            overflow: hidden;
+            padding: 1rem;
+            transition: box-shadow var(--transition);
         }
-        .card-header {
-            padding: 0.6rem 1.2rem;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            user-select: none;
+        .card h2 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
             font-weight: 500;
-            font-size: 0.9rem;
+            color: var(--text);
+            text-align: center;
         }
-        .card-header:hover { background: rgba(255,255,255,0.3); }
-        .card-header .arrow { transition: transform var(--transition); color: var(--text-muted); }
-        .card.open .arrow { transform: rotate(90deg); }
-        .card-body {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease, padding 0.3s ease;
-            padding: 0 1.2rem;
-        }
-        .card.open .card-body {
-            max-height: 800px;
-            padding: 0.5rem 1.2rem 1rem;
-        }
-
-        .indicator {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin: 0.5rem 0;
-        }
-        .indicator-circle {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1.2rem;
-            color: white;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            flex-shrink: 0;
-        }
-        .indicator-info {
-            flex: 1;
-        }
-        .indicator-info .value {
-            font-size: 1.4rem;
-            font-weight: 700;
-        }
-        .indicator-info .target {
-            color: var(--text-muted);
-            font-size: 0.8rem;
-        }
-        .status-text {
-            margin: 0.5rem 0;
-            font-size: 0.8rem;
-            padding: 0.4rem 0.8rem;
-            border-radius: 20px;
-            background: rgba(76,175,125,0.1);
-            display: inline-block;
-        }
-        .status-text.success { background: rgba(76,175,125,0.15); color: #2d6a4f; }
-        .status-text.warning { background: rgba(245,176,66,0.15); color: #9a6b1f; }
-        .status-text.danger { background: rgba(232,93,93,0.15); color: #a13c3c; }
-
         .chart-container {
             position: relative;
-            height: 200px;
-            margin: 0.5rem 0;
+            height: 250px;
+            width: 100%;
         }
         footer {
             text-align: center;
@@ -179,503 +82,212 @@
             font-size: 0.7rem;
             color: var(--text-muted);
         }
-        @media (max-width: 600px) {
-            .chart-container { height: 160px; }
-            .indicator-circle { width: 40px; height: 40px; font-size: 1rem; }
-        }
     </style>
 </head>
 <body>
     <header>
-        <h1>🌿 Aeroponía Automatizada</h1>
-        <p>Albahaca · Asturias · 30 días</p>
+        <h1>🌿 Dashboard Aeroponía Automatizada</h1>
+        <p>Datos horarios · 30 días · Albahaca en Asturias</p>
     </header>
 
-    <!-- Estado global del sistema -->
-    <div class="system-status" id="systemStatus"></div>
-
-    <!-- Pestañas -->
-    <div class="tabs">
-        <button class="tab-button active" data-tab="hojas">🌱 Hojas</button>
-        <button class="tab-button" data-tab="raices">💧 Raíces</button>
-    </div>
-
-    <!-- Pestaña Hojas -->
-    <div id="tab-hojas" class="tab-content active">
-        <!-- Entorno -->
-        <div class="card" data-card>
-            <div class="card-header">
-                <span>🌍 Entorno (monitoreo)</span>
-                <span class="arrow">▶</span>
-            </div>
-            <div class="card-body">
-                <div class="chart-container"><canvas id="chart-env-combinado"></canvas></div>
-                <p style="color:var(--text-muted); font-size:0.8rem;">Temperatura y humedad ambiente. Solo se registran, no se controlan.</p>
-            </div>
+    <div class="grid">
+        <!-- Tarjeta 1: Temperatura -->
+        <div class="card">
+            <h2>🌡️ Temperatura (interior/exterior)</h2>
+            <div class="chart-container"><canvas id="chart-temperatura"></canvas></div>
         </div>
-
-        <!-- Temperatura Foliar -->
-        <div class="card" data-card>
-            <div class="card-header">
-                <span>🌡️ Temperatura de las hojas</span>
-                <span class="arrow">▶</span>
-            </div>
-            <div class="card-body">
-                <div class="indicator" id="indicator-temp-hojas"></div>
-                <div class="chart-container"><canvas id="chart-temp-hojas"></canvas></div>
-                <div class="status-text" id="status-temp-hojas"></div>
-            </div>
+        <!-- Tarjeta 2: Humedad -->
+        <div class="card">
+            <h2>💧 Humedad (interior/exterior)</h2>
+            <div class="chart-container"><canvas id="chart-humedad"></canvas></div>
         </div>
-
-        <!-- Humedad Canopia -->
-        <div class="card" data-card>
-            <div class="card-header">
-                <span>💧 Humedad en las hojas</span>
-                <span class="arrow">▶</span>
-            </div>
-            <div class="card-body">
-                <div class="indicator" id="indicator-hum-hojas"></div>
-                <div class="chart-container"><canvas id="chart-hum-hojas"></canvas></div>
-                <div class="status-text" id="status-hum-hojas"></div>
-            </div>
+        <!-- Tarjeta 3: Presión -->
+        <div class="card">
+            <h2>🌀 Presión Atmosférica (int/ext)</h2>
+            <div class="chart-container"><canvas id="chart-presion"></canvas></div>
         </div>
-
-        <!-- Iluminación LED -->
-        <div class="card" data-card>
-            <div class="card-header">
-                <span>💡 Iluminación LED</span>
-                <span class="arrow">▶</span>
-            </div>
-            <div class="card-body">
-                <div class="chart-container"><canvas id="chart-luz"></canvas></div>
-                <p style="color:var(--text-muted); font-size:0.8rem;">Roja y azul. Cambio de estrategia el día 10: más luz azul.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Pestaña Raíces -->
-    <div id="tab-raices" class="tab-content">
-        <!-- Temperatura Radicular -->
-        <div class="card" data-card>
-            <div class="card-header">
-                <span>🌡️ Temperatura de las raíces</span>
-                <span class="arrow">▶</span>
-            </div>
-            <div class="card-body">
-                <div class="indicator" id="indicator-temp-raiz"></div>
-                <div class="chart-container"><canvas id="chart-temp-raiz"></canvas></div>
-                <div class="status-text" id="status-temp-raiz"></div>
-            </div>
-        </div>
-
-        <!-- Humedad Radicular -->
-        <div class="card" data-card>
-            <div class="card-header">
-                <span>💧 Humedad en las raíces</span>
-                <span class="arrow">▶</span>
-            </div>
-            <div class="card-body">
-                <div class="indicator" id="indicator-hum-raiz"></div>
-                <div class="chart-container"><canvas id="chart-hum-raiz"></canvas></div>
-                <div class="status-text" id="status-hum-raiz"></div>
-            </div>
-        </div>
-
-        <!-- pH -->
-        <div class="card" data-card>
-            <div class="card-header">
-                <span>⚗️ pH de la solución</span>
-                <span class="arrow">▶</span>
-            </div>
-            <div class="card-body">
-                <div class="indicator" id="indicator-ph"></div>
-                <div class="chart-container"><canvas id="chart-ph"></canvas></div>
-                <div class="status-text" id="status-ph"></div>
-            </div>
-        </div>
-
-        <!-- CE -->
-        <div class="card" data-card>
-            <div class="card-header">
-                <span>🧪 Conductividad Eléctrica</span>
-                <span class="arrow">▶</span>
-            </div>
-            <div class="card-body">
-                <div class="indicator" id="indicator-ec"></div>
-                <div class="chart-container"><canvas id="chart-ec"></canvas></div>
-                <div class="status-text" id="status-ec"></div>
-            </div>
+        <!-- Tarjeta 4: Iluminación y CE -->
+        <div class="card">
+            <h2>💡 Iluminación y Conductividad</h2>
+            <div class="chart-container"><canvas id="chart-iluminacion-ce"></canvas></div>
         </div>
     </div>
 
     <footer>
-        Dashboard simplificado para demostración · Datos simulados
+        Dashboard simplificado · Datos desde archivos JSON
     </footer>
 
     <script>
-        // ========== CONFIGURACIÓN ==========
-        const OBJETIVOS = {
-            tempAmbiente: 20,
-            humAmbiente: 65,
-            tempHojas: 20,  tolTempHojas: 1,
-            humHojas: 62,   tolHumHojas: 5,
-            luzRojaInicial: 150, luzRojaFinal: 120,
-            luzAzulInicial: 80,  luzAzulFinal: 110,
-            tempRaiz: 20,   tolTempRaiz: 1,
-            humRaiz: 95,    tolHumRaiz: 3,
-            ph: 5.8,        tolPh: 0.3,
-            ec: 1.8,        tolEc: 0.2
-        };
-
-        let datosCache = null;
-
-        // ========== GENERACIÓN DE DATOS SIMULADOS ==========
-        function generarDatosSimulados() {
-            const datos = [];
-            const hoy = new Date();
-            for (let i = 0; i < 60; i++) {
-                const fecha = new Date(hoy);
-                fecha.setDate(hoy.getDate() - (59 - i));
-                fecha.setHours(i % 2 === 0 ? 6 : 18, 0, 0, 0);
-                const esDia = i % 2 === 0;
-                const diaCultivo = Math.floor(i / 2) + 1;
-
-                // Luz con tendencia
-                const factorRojo = diaCultivo <= 10 ? 1 : Math.max(0.7, 1 - (diaCultivo - 10) * 0.03);
-                const factorAzul = diaCultivo <= 10 ? 1 : Math.min(1.3, 1 + (diaCultivo - 10) * 0.03);
-                const luzRoja = esDia ? OBJETIVOS.luzRojaInicial * factorRojo + (Math.random() * 8 - 4) : 0;
-                const luzAzul = esDia ? OBJETIVOS.luzAzulInicial * factorAzul + (Math.random() * 8 - 4) : 0;
-
-                // Entorno base (sin control)
-                const tempEnvBase = esDia ? 16.5 + Math.random() * 3 : 15.0 + Math.random() * 3;
-                const humEnvBase = esDia ? 65 + Math.random() * 10 : 68 + Math.random() * 12;
-                const presion = 1010 + Math.random() * 10;
-                const luzAmb = esDia ? 200 + Math.random() * 400 : 0;
-
-                // Entorno con control
-                const resistencia = tempEnvBase < OBJETIVOS.tempAmbiente - 1 ? 1 : 0;
-                const tempEnv = resistencia ? OBJETIVOS.tempAmbiente - 0.5 + Math.random() * 1.5 : tempEnvBase;
-                const ventilacion = humEnvBase > 70 ? 1 : 0;
-                const humEnv = ventilacion ? 65 + Math.random() * 5 : humEnvBase;
-
-                // Hojas sin control
-                const tempHojasSinControl = tempEnvBase + 1 + Math.random() * 2;
-                const humHojasSinControl = humEnvBase - 5 + Math.random() * 5;
-                // Hojas con control
-                const tempHojas = OBJETIVOS.tempHojas + (Math.random() * 1.2 - 0.6);
-                const humHojas = OBJETIVOS.humHojas + (Math.random() * 6 - 3);
-
-                // Raíces sin control
-                const tempRaizSinControl = tempEnvBase - 1 + Math.random() * 2;
-                const humRaizSinControl = 85 + Math.random() * 10;
-                const phSinControl = OBJETIVOS.ph + 0.3 + Math.random() * 0.5;
-                const ecSinControl = OBJETIVOS.ec + 0.2 + Math.random() * 0.4;
-
-                // Raíces con control
-                const tempRaiz = OBJETIVOS.tempRaiz + (Math.random() * 1.0 - 0.5);
-                const humRaiz = OBJETIVOS.humRaiz + (Math.random() * 4 - 2);
-                const ph = OBJETIVOS.ph + (Math.random() * 0.3 - 0.15);
-                const ec = OBJETIVOS.ec + (Math.random() * 0.2 - 0.1);
-
-                datos.push({
-                    fecha: fecha.toISOString(),
-                    entorno: { temperatura: +tempEnv.toFixed(1), humedad: +humEnv.toFixed(1), presion: +presion.toFixed(1), luz: +luzAmb.toFixed(0) },
-                    hojas: {
-                        temperatura: +tempHojas.toFixed(1),
-                        humedad: +humHojas.toFixed(1),
-                        luz_roja: +luzRoja.toFixed(0),
-                        luz_azul: +luzAzul.toFixed(0),
-                        temp_sin_control: +tempHojasSinControl.toFixed(1),
-                        hum_sin_control: +humHojasSinControl.toFixed(1)
-                    },
-                    raices: {
-                        temperatura: +tempRaiz.toFixed(1),
-                        humedad: +humRaiz.toFixed(1),
-                        ph: +ph.toFixed(2),
-                        ec: +ec.toFixed(2),
-                        temp_sin_control: +tempRaizSinControl.toFixed(1),
-                        hum_sin_control: +humRaizSinControl.toFixed(1),
-                        ph_sin_control: +phSinControl.toFixed(2),
-                        ec_sin_control: +ecSinControl.toFixed(2)
-                    },
-                    control: { resistencia, ventilacion }
-                });
-            }
-            return datos;
+        // Función para cargar JSON desde archivo
+        async function cargarJSON(url) {
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error(`No se pudo cargar ${url}`);
+            return await resp.json();
         }
 
-        async function cargarDatos() {
-            if (datosCache) return datosCache;
-            try {
-                const resp = await fetch('data.json');
-                if (!resp.ok) throw new Error('No data.json');
-                datosCache = (await resp.json()).datos;
-            } catch {
-                datosCache = generarDatosSimulados();
-            }
-            return datosCache;
+        // Función para extraer etiquetas de fecha (día/mes hora:min)
+        function obtenerEtiquetas(datos) {
+            return datos.map(d => {
+                const f = new Date(d.fecha);
+                return `${f.getDate()}/${f.getMonth()+1} ${f.getHours()}:00`;
+            });
         }
 
-        // ========== UTILIDADES ==========
-        function calcularPctEnRango(valores, objetivo, tolerancia) {
-            let dentro = 0;
-            valores.forEach(v => { if (Math.abs(v - objetivo) <= tolerancia) dentro++; });
-            return (dentro / valores.length) * 100;
-        }
-
-        function crearIndicador(containerId, valorActual, objetivo, unidad, tolerancia) {
-            const cont = document.getElementById(containerId);
-            const dentro = Math.abs(valorActual - objetivo) <= tolerancia;
-            const color = dentro ? 'var(--success)' : 'var(--danger)';
-            const icono = dentro ? '✓' : '!';
-            cont.innerHTML = `
-                <div class="indicator-circle" style="background:${color}">${icono}</div>
-                <div class="indicator-info">
-                    <div class="value">${valorActual}${unidad}</div>
-                    <div class="target">Objetivo: ${objetivo}${unidad} (rango ±${tolerancia})</div>
-                </div>
-            `;
-        }
-
-        function crearGraficoControl(canvasId, labels, dataControl, dataSinControl, colorControl, objetivo, tolerancia) {
+        // Función para crear gráfico de dos líneas (interior vs exterior)
+        function crearGraficoDoble(canvasId, labels, dataInt, dataExt, colorInt, labelInt, colorExt, labelExt) {
             const ctx = document.getElementById(canvasId).getContext('2d');
-            const datasets = [
-                {
-                    label: 'Real (con control)',
-                    data: dataControl,
-                    borderColor: colorControl,
-                    backgroundColor: colorControl + '22',
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 0,
-                    borderWidth: 2
-                },
-                {
-                    label: 'Sin control',
-                    data: dataSinControl,
-                    borderColor: '#94a3b8',
-                    borderDash: [5, 5],
-                    borderWidth: 1.5,
-                    pointRadius: 0,
-                    fill: false,
-                    tension: 0.3
-                }
-            ];
-            // Banda de tolerancia (franja verde clara)
-            const upper = Array(dataControl.length).fill(objetivo + tolerancia);
-            const lower = Array(dataControl.length).fill(objetivo - tolerancia);
-            datasets.push({
-                label: 'Rango aceptable',
-                data: upper,
-                borderColor: 'transparent',
-                backgroundColor: 'rgba(76,175,125,0.15)',
-                fill: '+1',
-                pointRadius: 0
-            });
-            datasets.push({
-                label: 'Objetivo',
-                data: Array(dataControl.length).fill(objetivo),
-                borderColor: '#f5b042',
-                borderDash: [5, 5],
-                borderWidth: 1.5,
-                pointRadius: 0,
-                fill: false
-            });
-            datasets.push({
-                label: 'Límite inferior',
-                data: lower,
-                borderColor: 'transparent',
-                pointRadius: 0,
-                fill: false
-            });
-
             new Chart(ctx, {
                 type: 'line',
-                data: { labels, datasets },
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: labelInt,
+                            data: dataInt,
+                            borderColor: colorInt,
+                            backgroundColor: colorInt + '22',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            borderWidth: 2
+                        },
+                        {
+                            label: labelExt,
+                            data: dataExt,
+                            borderColor: colorExt,
+                            backgroundColor: 'transparent',
+                            tension: 0.3,
+                            pointRadius: 0,
+                            borderWidth: 2
+                        }
+                    ]
+                },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: true, labels: { color: '#2d3a4a', boxWidth: 10, font: { size: 9 } } },
+                        legend: { display: true, labels: { color: '#2d3a4a', boxWidth: 12, font: { size: 10 } } },
                         tooltip: { mode: 'index', intersect: false }
                     },
                     scales: {
-                        x: { ticks: { color: '#6c7a8a', maxTicksLimit: 8, font: { size: 9 } }, grid: { color: '#c9d1db' } },
+                        x: { ticks: { color: '#6c7a8a', maxTicksLimit: 10, font: { size: 9 } }, grid: { color: '#c9d1db' } },
                         y: { ticks: { color: '#6c7a8a', font: { size: 9 } }, grid: { color: '#c9d1db' } }
                     }
                 }
             });
         }
 
-        function crearGraficoDoble(canvasId, labels, data1, data2, color1, label1, color2, label2) {
+        // Función para gráfico de iluminación + CE (doble eje)
+        function crearGraficoIluminacionCE(canvasId, labels, luzRoja, luzAzul, ce) {
             const ctx = document.getElementById(canvasId).getContext('2d');
             new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels,
                     datasets: [
-                        { label: label1, data: data1, borderColor: color1, backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2 },
-                        { label: label2, data: data2, borderColor: color2, backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2 }
+                        {
+                            label: 'Luz Roja',
+                            data: luzRoja,
+                            borderColor: '#e85d5d',
+                            backgroundColor: '#e85d5d22',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Luz Azul',
+                            data: luzAzul,
+                            borderColor: '#4f8df9',
+                            backgroundColor: '#4f8df922',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'CE (mS/cm)',
+                            data: ce,
+                            borderColor: '#f5b042',
+                            backgroundColor: 'transparent',
+                            tension: 0.3,
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            yAxisID: 'y1'
+                        }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: true, labels: { color: '#2d3a4a', boxWidth: 10, font: { size: 9 } } } },
+                    plugins: {
+                        legend: { display: true, labels: { color: '#2d3a4a', boxWidth: 12, font: { size: 10 } } },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
                     scales: {
-                        x: { ticks: { color: '#6c7a8a', maxTicksLimit: 8, font: { size: 9 } }, grid: { color: '#c9d1db' } },
-                        y: { ticks: { color: '#6c7a8a', font: { size: 9 } }, grid: { color: '#c9d1db' } }
+                        x: { ticks: { color: '#6c7a8a', maxTicksLimit: 10, font: { size: 9 } }, grid: { color: '#c9d1db' } },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            ticks: { color: '#6c7a8a', font: { size: 9 } },
+                            title: { display: true, text: 'µmol/m²/s', color: '#6c7a8a' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            ticks: { color: '#6c7a8a', font: { size: 9 } },
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: 'mS/cm', color: '#6c7a8a' }
+                        }
                     }
                 }
             });
         }
 
-        function crearGraficoEntorno(canvasId, labels, tempData, humData) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [
-                        { label: 'Temperatura (°C)', data: tempData, borderColor: '#4f8df9', backgroundColor: '#4f8df922', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, yAxisID: 'y' },
-                        { label: 'Humedad (%)', data: humData, borderColor: '#4caf7d', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, yAxisID: 'y1' }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: true, labels: { color: '#2d3a4a', boxWidth: 10, font: { size: 9 } } } },
-                    scales: {
-                        x: { ticks: { color: '#6c7a8a', maxTicksLimit: 8, font: { size: 9 } }, grid: { color: '#c9d1db' } },
-                        y: { type: 'linear', position: 'left', ticks: { color: '#6c7a8a', font: { size: 9 } }, title: { display: true, text: '°C', color: '#6c7a8a' } },
-                        y1: { type: 'linear', position: 'right', ticks: { color: '#6c7a8a', font: { size: 9 } }, grid: { drawOnChartArea: false }, title: { display: true, text: '%', color: '#6c7a8a' } }
-                    }
-                }
-            });
-        }
-
-        function crearEstadoSistema(datos) {
-            const cont = document.getElementById('systemStatus');
-            const ultimo = datos[datos.length - 1];
-            const checks = [
-                Math.abs(ultimo.hojas.temperatura - OBJETIVOS.tempHojas) <= OBJETIVOS.tolTempHojas,
-                Math.abs(ultimo.hojas.humedad - OBJETIVOS.humHojas) <= OBJETIVOS.tolHumHojas,
-                Math.abs(ultimo.raices.temperatura - OBJETIVOS.tempRaiz) <= OBJETIVOS.tolTempRaiz,
-                Math.abs(ultimo.raices.humedad - OBJETIVOS.humRaiz) <= OBJETIVOS.tolHumRaiz,
-                Math.abs(ultimo.raices.ph - OBJETIVOS.ph) <= OBJETIVOS.tolPh,
-                Math.abs(ultimo.raices.ec - OBJETIVOS.ec) <= OBJETIVOS.tolEc
-            ];
-            const allOk = checks.every(Boolean);
-            const someWarn = !allOk && checks.some(Boolean);
-            const dotClass = allOk ? '' : (someWarn ? 'warning' : 'danger');
-            const text = allOk ? 'Sistema estable, todas las variables en rango' : (someWarn ? 'Algunas variables fuera de rango, revisar' : 'Sistema requiere atención');
-            cont.innerHTML = `
-                <div class="status-pill">
-                    <span class="status-dot ${dotClass}"></span>
-                    ${text}
-                </div>
-            `;
-        }
-
-        // ========== INICIALIZACIÓN ==========
+        // ==================== INICIALIZACIÓN ====================
         async function init() {
-            const datos = await cargarDatos();
-            const labels = datos.map(d => {
-                const f = new Date(d.fecha);
-                return `${f.getDate()}/${f.getMonth()+1}`;
-            });
+            try {
+                // Cargar los 4 JSON
+                const [tempData, humData, presData, ilumData] = await Promise.all([
+                    cargarJSON('temperatura.json'),
+                    cargarJSON('humedad.json'),
+                    cargarJSON('presion.json'),
+                    cargarJSON('iluminacion_conductividad.json')
+                ]);
 
-            // Series
-            const tempEnv = datos.map(d => d.entorno.temperatura);
-            const humEnv = datos.map(d => d.entorno.humedad);
-            const tempHojas = datos.map(d => d.hojas.temperatura);
-            const tempHojasSin = datos.map(d => d.hojas.temp_sin_control);
-            const humHojas = datos.map(d => d.hojas.humedad);
-            const humHojasSin = datos.map(d => d.hojas.hum_sin_control);
-            const luzRoja = datos.map(d => d.hojas.luz_roja);
-            const luzAzul = datos.map(d => d.hojas.luz_azul);
-            const tempRaiz = datos.map(d => d.raices.temperatura);
-            const tempRaizSin = datos.map(d => d.raices.temp_sin_control);
-            const humRaiz = datos.map(d => d.raices.humedad);
-            const humRaizSin = datos.map(d => d.raices.hum_sin_control);
-            const ph = datos.map(d => d.raices.ph);
-            const phSin = datos.map(d => d.raices.ph_sin_control);
-            const ec = datos.map(d => d.raices.ec);
-            const ecSin = datos.map(d => d.raices.ec_sin_control);
+                // Etiquetas comunes (asumimos misma fecha)
+                const labels = obtenerEtiquetas(tempData.datos);
 
-            // Estado global
-            crearEstadoSistema(datos);
+                // 1. Temperatura
+                const tempInt = tempData.datos.map(d => d.temp_int);
+                const tempExt = tempData.datos.map(d => d.temp_ext);
+                crearGraficoDoble('chart-temperatura', labels, tempInt, tempExt, '#4f8df9', 'Interior (°C)', '#94a3b8', 'Exterior (°C)');
 
-            // Entorno
-            crearGraficoEntorno('chart-env-combinado', labels, tempEnv, humEnv);
+                // 2. Humedad
+                const humInt = humData.datos.map(d => d.hum_int);
+                const humExt = humData.datos.map(d => d.hum_ext);
+                crearGraficoDoble('chart-humedad', labels, humInt, humExt, '#4caf7d', 'Interior (%)', '#94a3b8', 'Exterior (%)');
 
-            // Hojas: Temperatura
-            crearIndicador('indicator-temp-hojas', tempHojas[tempHojas.length-1], OBJETIVOS.tempHojas, '°C', OBJETIVOS.tolTempHojas);
-            crearGraficoControl('chart-temp-hojas', labels, tempHojas, tempHojasSin, '#e85d5d', OBJETIVOS.tempHojas, OBJETIVOS.tolTempHojas);
-            const pctTempHojas = calcularPctEnRango(tempHojas, OBJETIVOS.tempHojas, OBJETIVOS.tolTempHojas);
-            document.getElementById('status-temp-hojas').textContent = `✅ Control activo: ${pctTempHojas.toFixed(0)}% del tiempo dentro de rango`;
-            document.getElementById('status-temp-hojas').className = 'status-text success';
+                // 3. Presión
+                const presInt = presData.datos.map(d => d.pres_int);
+                const presExt = presData.datos.map(d => d.pres_ext);
+                crearGraficoDoble('chart-presion', labels, presInt, presExt, '#9aa5b1', 'Interior (hPa)', '#94a3b8', 'Exterior (hPa)');
 
-            // Hojas: Humedad
-            crearIndicador('indicator-hum-hojas', humHojas[humHojas.length-1], OBJETIVOS.humHojas, '%', OBJETIVOS.tolHumHojas);
-            crearGraficoControl('chart-hum-hojas', labels, humHojas, humHojasSin, '#4caf7d', OBJETIVOS.humHojas, OBJETIVOS.tolHumHojas);
-            const pctHumHojas = calcularPctEnRango(humHojas, OBJETIVOS.humHojas, OBJETIVOS.tolHumHojas);
-            document.getElementById('status-hum-hojas').textContent = `✅ Control activo: ${pctHumHojas.toFixed(0)}% del tiempo dentro de rango`;
-            document.getElementById('status-hum-hojas').className = 'status-text success';
+                // 4. Iluminación y CE
+                const luzRoja = ilumData.datos.map(d => d.luz_roja);
+                const luzAzul = ilumData.datos.map(d => d.luz_azul);
+                const ce = ilumData.datos.map(d => d.ce);
+                crearGraficoIluminacionCE('chart-iluminacion-ce', labels, luzRoja, luzAzul, ce);
 
-            // Luz
-            crearGraficoDoble('chart-luz', labels, luzRoja, luzAzul, '#e85d5d', 'Roja', '#4f8df9', 'Azul');
-
-            // Raíces: Temperatura
-            crearIndicador('indicator-temp-raiz', tempRaiz[tempRaiz.length-1], OBJETIVOS.tempRaiz, '°C', OBJETIVOS.tolTempRaiz);
-            crearGraficoControl('chart-temp-raiz', labels, tempRaiz, tempRaizSin, '#e85d5d', OBJETIVOS.tempRaiz, OBJETIVOS.tolTempRaiz);
-            const pctTempRaiz = calcularPctEnRango(tempRaiz, OBJETIVOS.tempRaiz, OBJETIVOS.tolTempRaiz);
-            document.getElementById('status-temp-raiz').textContent = `✅ Control activo: ${pctTempRaiz.toFixed(0)}% del tiempo dentro de rango`;
-            document.getElementById('status-temp-raiz').className = 'status-text success';
-
-            // Raíces: Humedad
-            crearIndicador('indicator-hum-raiz', humRaiz[humRaiz.length-1], OBJETIVOS.humRaiz, '%', OBJETIVOS.tolHumRaiz);
-            crearGraficoControl('chart-hum-raiz', labels, humRaiz, humRaizSin, '#4caf7d', OBJETIVOS.humRaiz, OBJETIVOS.tolHumRaiz);
-            const pctHumRaiz = calcularPctEnRango(humRaiz, OBJETIVOS.humRaiz, OBJETIVOS.tolHumRaiz);
-            document.getElementById('status-hum-raiz').textContent = `✅ Control activo: ${pctHumRaiz.toFixed(0)}% del tiempo dentro de rango`;
-            document.getElementById('status-hum-raiz').className = 'status-text success';
-
-            // pH
-            crearIndicador('indicator-ph', ph[ph.length-1], OBJETIVOS.ph, '', OBJETIVOS.tolPh);
-            crearGraficoControl('chart-ph', labels, ph, phSin, '#f5b042', OBJETIVOS.ph, OBJETIVOS.tolPh);
-            const pctPh = calcularPctEnRango(ph, OBJETIVOS.ph, OBJETIVOS.tolPh);
-            document.getElementById('status-ph').textContent = `✅ Control activo: ${pctPh.toFixed(0)}% del tiempo dentro de rango`;
-            document.getElementById('status-ph').className = 'status-text success';
-
-            // CE
-            crearIndicador('indicator-ec', ec[ec.length-1], OBJETIVOS.ec, ' mS/cm', OBJETIVOS.tolEc);
-            crearGraficoControl('chart-ec', labels, ec, ecSin, '#9aa5b1', OBJETIVOS.ec, OBJETIVOS.tolEc);
-            const pctEc = calcularPctEnRango(ec, OBJETIVOS.ec, OBJETIVOS.tolEc);
-            document.getElementById('status-ec').textContent = `✅ Control activo: ${pctEc.toFixed(0)}% del tiempo dentro de rango`;
-            document.getElementById('status-ec').className = 'status-text success';
+            } catch (error) {
+                console.error('Error cargando datos:', error);
+                document.body.innerHTML += `<p style="color:red; text-align:center;">No se pudieron cargar los archivos JSON. Asegúrate de que estén en el mismo directorio.</p>`;
+            }
         }
 
-        // ========== UI INTERACTIVA ==========
-        document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                btn.classList.add('active');
-                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-            });
-        });
-
-        document.querySelectorAll('[data-card]').forEach(card => {
-            card.querySelector('.card-header').addEventListener('click', () => {
-                card.classList.toggle('open');
-            });
-        });
-
-        window.addEventListener('DOMContentLoaded', () => {
-            init();
-            // Abrir la primera tarjeta por defecto
-            document.querySelector('[data-card]').classList.add('open');
-        });
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
