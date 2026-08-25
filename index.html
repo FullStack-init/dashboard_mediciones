@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Aeroponía - Simulación en Vivo</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <style>
-        /* Estilos neumórficos iguales a los anteriores */
         :root {
             --bg: #e0e5ec; --shadow-dark: #a3b1c6; --shadow-light: #ffffff;
             --text: #2d3a4a; --text-muted: #6c7a8a; --accent: #4f8df9;
@@ -87,6 +87,9 @@
             box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
             color: var(--accent);
         }
+        .range-controls {
+            display:flex; justify-content:center; gap:0.5rem; margin:0.5rem 0;
+        }
         footer { text-align:center; margin-top:auto; padding:1rem 0 0; font-size:0.7rem; color:var(--text-muted); }
     </style>
 </head>
@@ -106,9 +109,16 @@
     <div class="time-controls">
         <button class="btn" id="btn-acelerar">⏩ Acelerar (1h/s)</button>
         <button class="btn" id="btn-pausa">⏸ Pausa</button>
+        <button class="btn" id="btn-ultimo">⟲ Ir al final</button>
     </div>
 
-    <!-- Pestañas como antes -->
+    <div class="range-controls">
+        <button class="btn range-btn active" data-range="24">1 día</button>
+        <button class="btn range-btn" data-range="168">1 semana</button>
+        <button class="btn range-btn" data-range="720">30 días</button>
+    </div>
+
+    <!-- Pestañas -->
     <div id="tab-resumen" class="tab-content active">
         <div class="kpi-grid" id="kpi-grid"></div>
         <h2 style="text-align:center; margin:1rem 0;">Controles de setpoint</h2>
@@ -182,14 +192,15 @@
             luz_roja: [], luz_azul: [], ph: [], ce: [],
             fechas: []
         };
-        let fechasTooltip = [];
-
         let charts = {};
 
-        // Máximo de puntos visibles (72 horas = 3 días)
-        const MAX_POINTS = 72;
-        // Puntos iniciales para dejar 30% de espacio libre
-        let puntosVisibles = Math.floor(MAX_POINTS * 0.7); // 50
+        // Ventana visible
+        let windowPoints = 24; // 1 día por defecto
+        let margenDerecho = Math.round(windowPoints * 0.3); // 30% de la ventana
+        let currentMin = 0;
+        let currentMax = windowPoints - 1;
+        let isAutoScroll = true;
+        let puntosVisibles = Math.floor(windowPoints * 0.7);
 
         // ================= FUNCIONES =================
         function rand(min, max) { return min + Math.random() * (max - min); }
@@ -278,14 +289,22 @@
                 agregarPunto(punto);
             }
             tiempoActual = new Date(HOY);
-            puntosVisibles = Math.floor(MAX_POINTS * 0.7);
+            puntosVisibles = Math.floor(windowPoints * 0.7);
+            isAutoScroll = true;
+            // Ajustar ventana inicial con margen
+            currentMax = datos.fechas.length - 1;
+            currentMin = Math.max(0, currentMax - windowPoints + 1);
         }
 
         function avanzarHora() {
             tiempoActual.setHours(tiempoActual.getHours() + 1);
             const punto = generarPunto(tiempoActual);
             agregarPunto(punto);
-            if (puntosVisibles < MAX_POINTS) {
+            if (isAutoScroll) {
+                currentMax = datos.fechas.length - 1;
+                currentMin = Math.max(0, currentMax - windowPoints + 1);
+            }
+            if (puntosVisibles < windowPoints) {
                 puntosVisibles++;
             }
             actualizarGraficos();
@@ -295,7 +314,7 @@
         // ================= GRÁFICOS =================
         function crearGrafico(id, datasets) {
             const ctx = document.getElementById(id).getContext('2d');
-            charts[id] = new Chart(ctx, {
+            const chart = new Chart(ctx, {
                 type: 'line',
                 data: { datasets },
                 options: {
@@ -316,8 +335,12 @@
                                 title: function(items) {
                                     if (items.length > 0) {
                                         const idx = items[0].parsed.x;
-                                        if (fechasTooltip[idx]) {
-                                            return fechasTooltip[idx].toLocaleString();
+                                        if (datos.fechas[idx]) {
+                                            const f = new Date(datos.fechas[idx]);
+                                            return f.toLocaleString('es-ES', {
+                                                day: '2-digit', month: '2-digit', year: 'numeric',
+                                                hour: '2-digit', minute: '2-digit'
+                                            });
                                         }
                                     }
                                     return '';
@@ -334,22 +357,33 @@
                                 }
                             }
                         },
-                        legend: { labels: { color: '#2d3a4a', boxWidth: 10, font: { size: 9 } } }
+                        legend: { labels: { color: '#2d3a4a', boxWidth: 10, font: { size: 9 } } },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x',
+                                onPan: function({chart}) {
+                                    isAutoScroll = false; // desactivar auto-scroll al mover manualmente
+                                    currentMin = chart.scales.x.min;
+                                    currentMax = chart.scales.x.max;
+                                }
+                            }
+                        }
                     },
                     scales: {
                         x: {
                             type: 'linear',
                             min: 0,
-                            max: MAX_POINTS - 1,
+                            max: windowPoints - 1,
                             ticks: {
                                 color: '#6c7a8a',
                                 maxTicksLimit: 10,
                                 font: { size: 9 },
                                 callback: function(value) {
                                     const idx = Math.round(value);
-                                    if (idx >= 0 && idx < fechasTooltip.length) {
-                                        const f = fechasTooltip[idx];
-                                        return `${f.getDate()}/${f.getMonth()+1}`;
+                                    if (idx >= 0 && idx < datos.fechas.length) {
+                                        const f = new Date(datos.fechas[idx]);
+                                        return `${f.getDate()}/${f.getMonth()+1} ${f.getHours()}:00`;
                                     }
                                     return '';
                                 }
@@ -364,6 +398,7 @@
                     }
                 }
             });
+            charts[id] = chart;
         }
 
         function crearGraficosSiNoExisten() {
@@ -409,26 +444,35 @@
             if (Object.keys(charts).length === 0) return;
 
             const total = datos.fechas.length;
-            const puntosMostrar = Math.min(puntosVisibles, total);
-            const inicio = total - puntosMostrar;
-            const fin = total - 1;
+            if (total === 0) return;
 
-            // Actualizar fechasTooltip (solo el rango visible)
-            fechasTooltip = datos.fechas.slice(inicio);
+            let inicio, fin, maxEscala;
+            if (isAutoScroll) {
+                fin = total - 1;
+                inicio = Math.max(0, fin - windowPoints + 1);
+                currentMin = inicio;
+                currentMax = fin;
+                maxEscala = fin + margenDerecho; // margen derecho en auto-scroll
+            } else {
+                // Pan manual: usar currentMin y currentMax sin forzar margen
+                inicio = Math.max(0, Math.floor(currentMin));
+                fin = Math.min(total - 1, Math.ceil(currentMax));
+                maxEscala = fin;
+                currentMin = inicio;
+                currentMax = fin;
+            }
 
-            // Preparar datos con índices x
-            const indices = Array.from({length: puntosMostrar}, (_, i) => inicio + i);
-
-            const prepararDatos = (arr) => arr.slice(inicio).map((y, i) => ({ x: indices[i], y }));
+            // Preparar datos visibles
+            const indices = Array.from({length: fin - inicio + 1}, (_, i) => inicio + i);
+            const prepararDatos = (arr) => arr.slice(inicio, fin + 1).map((y, i) => ({ x: indices[i], y }));
 
             const asignar = (id, arr1, arr2) => {
                 const chart = charts[id];
                 if (!chart) return;
                 chart.data.datasets[0].data = prepararDatos(arr1);
                 if (arr2) chart.data.datasets[1].data = prepararDatos(arr2);
-                // Actualizar min/max de escala x
                 chart.options.scales.x.min = inicio;
-                chart.options.scales.x.max = inicio + MAX_POINTS - 1;
+                chart.options.scales.x.max = maxEscala;
                 chart.update();
             };
 
@@ -440,12 +484,11 @@
             asignar('chart-pres-hojas', datos.pres_hojas, datos.pres_ext);
             asignar('chart-ph', datos.ph);
             asignar('chart-ce', datos.ce);
-            // Luz
             if (charts['chart-luz']) {
                 charts['chart-luz'].data.datasets[0].data = prepararDatos(datos.luz_roja);
                 charts['chart-luz'].data.datasets[1].data = prepararDatos(datos.luz_azul);
                 charts['chart-luz'].options.scales.x.min = inicio;
-                charts['chart-luz'].options.scales.x.max = inicio + MAX_POINTS - 1;
+                charts['chart-luz'].options.scales.x.max = maxEscala;
                 charts['chart-luz'].update();
             }
         }
@@ -510,11 +553,35 @@
             clearInterval(intervaloSimulacion);
         }
 
+        function irAlFinal() {
+            isAutoScroll = true;
+            currentMax = datos.fechas.length - 1;
+            currentMin = Math.max(0, currentMax - windowPoints + 1);
+            actualizarGraficos();
+        }
+
         // ================= INICIALIZACIÓN =================
         function init() {
             generarHistorico();
             crearControles();
             actualizarKPIs();
+
+            // Selector de rango
+            document.querySelectorAll('.range-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    windowPoints = parseInt(btn.dataset.range);
+                    margenDerecho = Math.round(windowPoints * 0.3); // recalcular margen
+                    puntosVisibles = Math.min(windowPoints, datos.fechas.length);
+                    isAutoScroll = true;
+                    currentMax = datos.fechas.length - 1;
+                    currentMin = Math.max(0, currentMax - windowPoints + 1);
+                    actualizarGraficos();
+                });
+            });
+
+            document.getElementById('btn-ultimo').addEventListener('click', irAlFinal);
 
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -534,6 +601,9 @@
 
             document.getElementById('btn-acelerar').addEventListener('click', iniciarAceleracion);
             document.getElementById('btn-pausa').addEventListener('click', pausar);
+
+            // Inicializar auto-scroll con margen
+            actualizarGraficos();
         }
 
         window.addEventListener('DOMContentLoaded', init);
